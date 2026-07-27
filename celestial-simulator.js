@@ -2233,6 +2233,12 @@ function decodeKey(b){ try{ return b? _xor(atob(b)) : ''; }catch(e){ return ''; 
    (如 'https://stargzr-ai.你的帳號.workers.dev'),經 Cloudflare AI Gateway
    集中管理金鑰、速率限制與用量分析。留空則直接使用本機金鑰模式。 */
 const AI_PROXY_BASE='/api';
+/* 代理失敗時把原因顯示出來,免得只看到「要 API Key」卻不知道哪裡壞掉 */
+async function proxyFail(tag,r){
+  let d=''; try{ d=(await r.clone().text()).slice(0,120); }catch(_){}
+  console.warn('[AI proxy] '+tag+' '+r.status+' '+r.url+' :: '+d);
+  toast('! '+tag+' proxy '+r.status,false,true);
+}
 function proxyUrl(kind){
   if(!AI_PROXY_BASE)throw new Error('no proxy');
   return AI_PROXY_BASE.replace(/\/$/,'')+'/'+kind;
@@ -2316,7 +2322,7 @@ async function handleVoice(blob){
   try{
     const r=await fetch(proxyUrl('asr'),
       {method:'POST',headers:{'Content-Type':blob.type||'audio/webm'},body:blob});
-    if(!r.ok)throw 0;
+    if(!r.ok){ proxyFail('ASR',r); throw 0; }
     text=((await r.json()).text||'').trim();
   }catch(e){
     const gk=getKey(GROQ_KEY_ENC,'tq_groq',T('輸入 Groq API Key(混淆後僅存本機)','Groq API key (obfuscated, stored locally)'));
@@ -2338,7 +2344,7 @@ async function handleVoice(blob){
   try{
     const r=await fetch(proxyUrl('llm'),
       {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!r.ok)throw 0;
+    if(!r.ok){ proxyFail('LLM',r); throw 0; }
     raw=await r.json();
   }catch(e){
     const hk=getKey(GH_TOKEN_ENC,'tq_gh',T('輸入 GitHub Models Token(混淆後僅存本機)','GitHub Models token (obfuscated, stored locally)'));
