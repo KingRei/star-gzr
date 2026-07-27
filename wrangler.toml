@@ -19,6 +19,10 @@ CF_ACCOUNT_ID = "5877a87bfbfca92ab863b26013c7e5ce"
 CF_GATEWAY_ID = "stargzr"
 # 同源呼叫不帶 Origin，這裡主要是給本機開發用
 ALLOWED_ORIGINS = "https://gazer.star-gzr.com,http://localhost:8888"
+# 預設直連 Groq / GitHub Models（金鑰仍在 Worker，不進瀏覽器）。
+# 想改走 Cloudflare AI Gateway 再設成 "1"；路徑不合時可用
+# GROQ_BASE / LLM_BASE 覆寫完整前綴。
+USE_GATEWAY = "0"
 
 # ── 機密(Secret)絕對不要寫在這個檔案 ──
 # 儀表板：Workers & Pages → star-gzr → Settings → Variables and Secrets → Add，型別選 Secret
