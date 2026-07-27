@@ -1,0 +1,13 @@
+# 這些不要當成靜態資產上傳
+.git
+.gitignore
+.assetsignore
+.wrangler
+.DS_Store
+wrangler.toml
+worker.js
+node_modules
+cloudflare-ai-proxy
+README.md
+API.md
+*.skill

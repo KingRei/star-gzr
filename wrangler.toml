@@ -1,0 +1,28 @@
+# 觀星者 StarGZR — 單一 Worker：靜態網站 + AI 代理
+# 因為有 main（程式碼），儀表板才會出現 Settings → Variables and Secrets
+
+name = "star-gzr"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+account_id = "5877a87bfbfca92ab863b26013c7e5ce"
+
+[assets]
+# 靜態檔就放在 repo 根目錄；要排除的檔案寫在 .assetsignore
+directory = "."
+binding = "ASSETS"
+# 找不到對應檔案時回 404，交給 worker.js 處理（它只認 /api/*）
+not_found_handling = "none"
+
+[vars]
+# 非機密值，可以進版控
+CF_ACCOUNT_ID = "5877a87bfbfca92ab863b26013c7e5ce"
+CF_GATEWAY_ID = "stargzr"
+# 同源呼叫不帶 Origin，這裡主要是給本機開發用
+ALLOWED_ORIGINS = "https://gazer.star-gzr.com,http://localhost:8888"
+
+# ── 機密(Secret)絕對不要寫在這個檔案 ──
+# 儀表板：Workers & Pages → star-gzr → Settings → Variables and Secrets → Add，型別選 Secret
+#   CF_AIG_TOKEN     （Authenticated Gateway 用）
+#   GROQ_API_KEY     （若非 BYOK 才需要）
+#   GH_MODELS_TOKEN  （若非 BYOK 才需要）
+# 或用 CLI：npx wrangler secret put CF_AIG_TOKEN

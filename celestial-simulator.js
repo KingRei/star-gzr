@@ -2232,7 +2232,7 @@ function decodeKey(b){ try{ return b? _xor(atob(b)) : ''; }catch(e){ return ''; 
 /* AI 代理端點:填入 Cloudflare Worker 網址
    (如 'https://stargzr-ai.你的帳號.workers.dev'),經 Cloudflare AI Gateway
    集中管理金鑰、速率限制與用量分析。留空則直接使用本機金鑰模式。 */
-const AI_PROXY_BASE='';
+const AI_PROXY_BASE='/api';
 function proxyUrl(kind){
   if(!AI_PROXY_BASE)throw new Error('no proxy');
   return AI_PROXY_BASE.replace(/\/$/,'')+'/'+kind;
