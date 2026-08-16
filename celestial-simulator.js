@@ -411,6 +411,7 @@ class LookDrag{
           trackOffset=Math.max(-0.26,Math.min(1.48,trackOffset+sg*dy*0.0032));
           return;
         }
+        if(typeof compassOn!=='undefined'&&compassOn){ setCompass(false); return; }
         const sg=invDrag? -1 : 1;
         this.yaw+=sg*dx*0.0032; this.pitch+=sg*dy*0.0032;
         this.pitch=Math.max(-0.45,Math.min(1.52,this.pitch)); this.apply();
@@ -1449,6 +1450,7 @@ function applyLang(){
   const rs=document.getElementById('retroSel');
   [...rs.options].forEach(o=>{o.textContent=lang==='zh'?ELEM[+o.value].name:ELEM[+o.value].en;});
   setPlayLabel();
+  try{ compassTitle(); }catch(e){}
   if(eclipseState)eclipseChip.textContent=ECL_STR[eclipseState][lang==='zh'?0:1];
   lunarCd=NaN; /* 重算農曆顯示語言 */
   relabelAll();
@@ -1473,6 +1475,92 @@ const locRead=document.getElementById('locReadout');
 const retroStat=document.getElementById('retroStatus');
 const anchorHintEl=document.getElementById('anchorHint');
 const zoomChip=document.getElementById('zoomChip');
+
+/* ══ 指南針對準:用手機的方位感測器直接把地平視角指向你面對的天空 ══
+   yaw 的定義與場景一致(0=正北、π/2=正東),所以只要把裝置四元數
+   轉成視線向量,再取 atan2(x,-z) 就是方位角。
+   iOS 的 alpha 原點是任意的,另外用 webkitCompassHeading(真北順時針)校正。 */
+const compassBtn=document.getElementById('compassBtn');
+let compassOn=false, compassGotEvent=false, compassOffset=null, compassWarnT=0, compassBusy=false;
+const _cq0=new THREE.Quaternion();
+const _cq1=new THREE.Quaternion(-Math.SQRT1_2,0,0,Math.SQRT1_2); /* 鏡頭朝機背 */
+const _cEuler=new THREE.Euler(), _cQ=new THREE.Quaternion();
+const _cZee=new THREE.Vector3(0,0,1), _cDir=new THREE.Vector3();
+
+function screenAngleRad(){
+  const a=(screen.orientation&&typeof screen.orientation.angle==='number')
+    ? screen.orientation.angle : (window.orientation||0);
+  return a*DEG;
+}
+function onDeviceOrient(e){
+  if(!compassOn)return;
+  if(e.alpha==null&&e.beta==null&&e.gamma==null)return;
+  compassGotEvent=true;
+  const a=(e.alpha||0)*DEG, b=(e.beta||0)*DEG, g=(e.gamma||0)*DEG;
+  _cEuler.set(b,a,-g,'YXZ');
+  _cQ.setFromEuler(_cEuler);
+  _cQ.multiply(_cq1);
+  _cQ.multiply(_cq0.setFromAxisAngle(_cZee,-screenAngleRad()));
+  _cDir.set(0,0,-1).applyQuaternion(_cQ);
+  let yaw=Math.atan2(_cDir.x,-_cDir.z);
+  const pitch=Math.asin(Math.max(-1,Math.min(1,_cDir.y)));
+  if(typeof e.webkitCompassHeading==='number'&&!isNaN(e.webkitCompassHeading)){
+    compassOffset=e.webkitCompassHeading*DEG+a; /* yaw≈-a,加上這個偏移即真方位 */
+  }
+  if(compassOffset!==null)yaw+=compassOffset;
+  ctrlR.yaw=yaw;
+  ctrlR.pitch=Math.max(-0.45,Math.min(1.52,pitch));
+  ctrlR.apply();
+}
+async function setCompass(on){
+  if(compassBusy)return; 
+  if(!!on===compassOn)return;
+  if(on){
+    if(typeof DeviceOrientationEvent==='undefined'){
+      toast(T('這個瀏覽器沒有方位感測器','No orientation sensor in this browser'),false,true); return; }
+    if(!window.isSecureContext){
+      toast(T('方位感測需要 HTTPS 連線','Orientation sensors need HTTPS'),false,true); return; }
+    if(typeof DeviceOrientationEvent.requestPermission==='function'){
+      compassBusy=true;
+      let res='denied';
+      try{ res=await DeviceOrientationEvent.requestPermission(); }catch(err){ res='denied'; }
+      compassBusy=false;
+      if(res!=='granted'){
+        toast(T('未取得方位感測權限,請在瀏覽器設定中允許「動作與方向」',
+                'Motion & orientation access denied — allow it in browser settings'),false,true);
+        return;
+      }
+    }
+    cancelNav();
+    lockMode='none'; lockSelEl.value='none';
+    trackMode='off'; trackSelEl.value='off';
+    compassGotEvent=false; compassOffset=null; compassOn=true;
+    window.addEventListener('deviceorientationabsolute',onDeviceOrient,true);
+    window.addEventListener('deviceorientation',onDeviceOrient,true);
+    compassBtn.classList.add('on'); compassBtn.setAttribute('aria-pressed','true');
+    toast(T('指南針對準開啟:把手機舉起來對準天空。方位不準時,拿著手機畫個 8 字校正磁力計。',
+            'Compass aim on: hold your phone up toward the sky. Wave it in a figure-8 to calibrate.'),false,true);
+    clearTimeout(compassWarnT);
+    compassWarnT=setTimeout(()=>{
+      if(compassOn&&!compassGotEvent)
+        toast(T('收不到方位資料 — 桌機或不支援的瀏覽器請改用拖曳',
+                'No orientation data — use drag on desktop or unsupported browsers'),false,true);
+    },2500);
+  }else{
+    compassOn=false;
+    clearTimeout(compassWarnT);
+    window.removeEventListener('deviceorientationabsolute',onDeviceOrient,true);
+    window.removeEventListener('deviceorientation',onDeviceOrient,true);
+    compassBtn.classList.remove('on'); compassBtn.setAttribute('aria-pressed','false');
+    ctrlR.syncFromCamera();
+    toast(T('指南針對準關閉','Compass aim off'),false,true);
+  }
+}
+compassBtn.addEventListener('click',()=>setCompass(!compassOn));
+function compassTitle(){
+  compassBtn.title=T('指南針對準(手機:對準真實天空)','Compass aim (mobile: point at the real sky)');
+}
+compassTitle();
 
 function pad(n){return String(n).padStart(2,'0');}
 function setDtInput(ms){
@@ -2055,6 +2143,7 @@ document.getElementById('homeBtn').addEventListener('click',()=>{
 /* 回初始位置:兩窗都回到開場狀態——地平視角面向正東、地平線之上;日心視角預設樞紐與距離 */
 function resetInitialView(){
   cancelNav();
+  if(typeof compassOn!=='undefined'&&compassOn)setCompass(false);
   observeIdx='none'; if(typeof obsSel!=='undefined'&&obsSel)obsSel.value='none';
   lockMode='none'; if(typeof lockSelEl!=='undefined'&&lockSelEl)lockSelEl.value='none';
   trackMode='off'; if(typeof trackSelEl!=='undefined'&&trackSelEl)trackSelEl.value='off';
@@ -2255,12 +2344,12 @@ function getKey(enc,lsKey,msg){
 }
 const AI_IDS=['dt','speed','lat','lon','langSel','tidalChk','phaseChk','sphereChk','signChk','orbitChk',
  'scaleChk','obsSel','retroSel','trailChk','trackSel','lockSel','constChk','eclLineChk','bgStarChk',
- 'dayChk','textChk','hideHorChk','invChk','trailFxChk','playBtn','nowBtn','resetViewBtn','homeBtn','retroTableBtn'];
+ 'dayChk','textChk','hideHorChk','invChk','trailFxChk','playBtn','nowBtn','resetViewBtn','homeBtn','retroTableBtn','compassBtn'];
 const AI_SPEC=`Controls. set:{"type":"set","id":ID,"value":V}; click:{"type":"click","id":ID}.
 dt "YYYY-MM-DDTHH:MM"; speed 3600000|7200000|10800000|21600000|86400000|259200000|864000000|-86400000 (ms sim per s); lat -89.9..89.9; lon -180..180; langSel zh|en.
 Checkbox bool: tidalChk tidal, phaseChk moon-phase&shadows, sphereChk celestial-sphere, signChk zodiac-sectors, orbitChk orbits, scaleChk true-scale, trailChk retro-trail, constChk constellations, eclLineChk ref-lines, bgStarChk stars, dayChk day/night, textChk labels, hideHorChk hide-horizon, invChk invert-drag, trailFxChk motion-trails(only |speed|>=86400000).
 Select: obsSel none|sun|p0..p8|moon (follow, true-scale only); retroSel 0|1|3|4|5|6|7|8 = Mercury..Pluto; trackSel off|ecl_e|ecl_w|lun_e|lun_w axis-lock; lockSel none|sun|moon|c:牡羊座|c:金牛座|c:雙子座|c:巨蟹座|c:獅子座|c:處女座|c:天秤座|c:天蠍座|c:射手座|c:摩羯座|c:水瓶座|c:雙魚座.
-Click: playBtn toggle-play, nowBtn now, resetViewBtn initial-view (reset BOTH panes to opening state: sky faces due east above horizon, heliocentric default framing; clears any follow/lock/tour), homeBtn reset-view, retroTableBtn retrograde-table.
+Click: compassBtn toggle compass-aim (phone points at the real sky using its orientation sensor; mobile only, asks permission, cancelled by dragging), playBtn toggle-play, nowBtn now, resetViewBtn initial-view (reset BOTH panes to opening state: sky faces due east above horizon, heliocentric default framing; clears any follow/lock/tour), homeBtn reset-view, retroTableBtn retrograde-table.
 navigate/tour (camera fly — BOTH panes zoom smoothly): {"type":"navigate","target":BODY} single hop, or {"type":"tour","targets":[BODY,...]} multi-stop. BODY=sun|moon|mercury|venus|earth|mars|jupiter|saturn|uranus|neptune|pluto (Chinese names also accepted). Use for: go to / show me / fly to / navigate / 導覽 / tour from X to Y to Z. "outermost planet / 最外圍行星"=pluto, "innermost / 最內圍"=mercury, "nine planets / 九顆行星"=mercury..pluto in order. BODY may also be a CONSTELLATION name (zodiac or listed), e.g. 牡羊座/Aries, 獅子座/Leo, 天蠍座/Scorpius (zh or en) — constellations turn only the sky pane.`;
 const AI_SYS='You operate a celestial simulator and answer astronomy questions ONLY. '+
  'Refuse anything unrelated to astronomy or simulator control (no actions, brief polite reply). '+
