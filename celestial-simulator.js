@@ -910,7 +910,19 @@ const EXTRA_CONST={
  'cyg':{zh:'天鵝座',en:'Cygnus',s:[[310.36,45.28,1.25],[305.56,40.26,2.2],[292.68,27.96,3.1],[296.24,45.13,2.9],[311.55,33.97,2.5]],l:[[0,1],[1,2],[3,1],[1,4]]},
  'cma':{zh:'大犬座',en:'Canis Major',s:[[101.29,-16.72,-1.46],[95.67,-17.96,1.98],[106.03,-23.83,3.0],[107.10,-26.39,1.83],[104.66,-28.97,1.5],[111.02,-29.30,2.45],[95.08,-30.06,3.0]],l:[[1,0],[0,2],[2,3],[3,5],[3,4],[4,6]]},
  'boo':{zh:'牧夫座',en:'Boötes',s:[[213.92,19.18,-0.05],[221.25,27.07,2.35],[222.20,33.31,3.47],[225.49,40.39,3.5],[218.02,38.31,3.03],[218.02,30.37,3.58],[208.67,18.40,2.68]],l:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[0,6]]},
- 'aur':{zh:'御夫座',en:'Auriga',s:[[79.17,46.00,0.08],[89.88,44.95,1.9],[89.93,37.21,2.62],[74.25,33.17,2.69],[75.49,43.82,3.03]],l:[[0,1],[1,2],[2,3],[3,4],[4,0]]}
+ 'aur':{zh:'御夫座',en:'Auriga',s:[[79.17,46.00,0.08],[89.88,44.95,1.9],[89.93,37.21,2.62],[74.25,33.17,2.69],[75.49,43.82,3.03]],l:[[0,1],[1,2],[2,3],[3,4],[4,0]]},
+ 'lyr':{zh:'天琴座',en:'Lyra',s:[[279.23,38.78,0.03],[284.10,37.60,4.36],[283.63,36.90,4.30],[284.74,32.69,3.24],[282.52,33.36,3.52]],l:[[0,1],[1,2],[2,3],[3,4],[4,1]]},
+ 'aql':{zh:'天鷹座',en:'Aquila',s:[[297.70,8.87,0.76],[296.56,10.61,2.72],[298.83,6.41,3.71],[286.56,3.11,3.36],[286.35,13.86,2.99],[302.83,-0.82,3.23],[286.56,-4.88,3.43]],l:[[4,1],[1,0],[0,2],[0,3],[3,6],[2,5]]},
+ 'per':{zh:'英仙座',en:'Perseus',s:[[51.08,49.86,1.79],[47.04,40.96,2.12],[58.53,31.88,2.85],[59.46,40.01,2.89],[46.20,53.51,2.93],[55.73,47.79,3.01],[46.94,38.84,3.39]],l:[[4,0],[0,5],[5,3],[3,2],[0,1],[1,6]]},
+ 'and':{zh:'仙女座',en:'Andromeda',s:[[2.10,29.09,2.06],[17.43,35.62,2.06],[30.97,42.33,2.10],[9.83,30.86,3.27],[14.19,38.50,3.86]],l:[[0,3],[3,1],[1,2],[1,4]]},
+ 'peg':{zh:'飛馬座',en:'Pegasus',s:[[346.19,15.21,2.48],[345.94,28.08,2.42],[3.31,15.18,2.83],[2.10,29.09,2.06],[326.05,9.88,2.38],[340.37,30.22,2.94],[340.75,10.83,3.40]],l:[[3,2],[2,0],[0,1],[1,3],[0,6],[6,4],[1,5]]},
+ 'umi':{zh:'小熊座·小北斗',en:'Ursa Minor',s:[[37.95,89.26,1.98],[222.68,74.16,2.08],[230.18,71.83,3.05],[251.49,75.76,4.23],[236.01,77.79,4.32],[263.05,86.59,4.36],[244.38,75.76,4.95]],l:[[0,5],[5,3],[3,4],[4,1],[1,2],[2,6],[6,4]]},
+ 'dra':{zh:'天龍座',en:'Draco',s:[[269.15,51.49,2.23],[262.61,52.30,2.79],[268.38,56.87,3.75],[263.12,55.19,4.88],[288.14,67.66,3.07],[257.20,65.71,3.17],[246.00,61.51,2.73],[231.23,58.97,3.29],[211.10,64.38,3.65],[172.85,69.33,3.84]],l:[[0,2],[2,3],[3,1],[1,0],[2,4],[4,5],[5,6],[6,7],[7,8],[8,9]]},
+ 'her':{zh:'武仙座',en:'Hercules',s:[[250.32,31.60,2.81],[255.07,30.93,3.92],[258.76,36.81,3.16],[250.72,38.92,3.48],[247.55,21.49,2.77],[258.66,14.39,3.06],[258.76,24.84,3.12]],l:[[0,1],[1,2],[2,3],[3,0],[0,4],[1,6],[6,5]]},
+ 'crb':{zh:'北冕座',en:'Corona Borealis',s:[[233.67,26.71,2.22],[231.96,29.11,3.68],[235.07,26.30,3.84],[237.40,26.07,4.63],[239.40,26.88,4.14],[231.04,31.36,4.14],[241.30,29.85,4.99]],l:[[5,1],[1,0],[0,2],[2,3],[3,4],[4,6]]},
+ 'cmi':{zh:'小犬座',en:'Canis Minor',s:[[114.83,5.22,0.34],[111.79,8.29,2.89]],l:[[0,1]]},
+ 'car':{zh:'船底座',en:'Carina',s:[[95.99,-52.70,-0.74],[138.30,-69.72,1.68],[125.63,-59.51,1.86],[139.27,-59.28,2.21],[146.10,-65.07,2.97],[160.74,-64.39,2.76]],l:[[0,2],[2,3],[3,4],[4,1],[4,5]]},
+ 'crv':{zh:'烏鴉座',en:'Corvus',s:[[182.53,-24.73,4.02],[188.60,-23.40,2.65],[183.95,-17.54,2.59],[187.47,-16.52,2.95],[182.09,-22.62,3.02]],l:[[2,3],[3,1],[1,4],[4,2],[4,0]]}
 };
 const extraGroupR=new THREE.Group(); extraGroupR.visible=false; starFrameR.add(extraGroupR);
 const ECL_POLE_EQ=new THREE.Vector3(0,-Math.sin(OBLQ),Math.cos(OBLQ));
@@ -2448,8 +2460,15 @@ async function handleVoice(blob){
   let out;
   try{ out=JSON.parse(raw.choices[0].message.content); }
   catch(e){ throw new Error(T('回覆解析失敗','Bad AI response')); }
+  const n=runActions(out.actions);
+  toast(String(out.reply||'').slice(0,30)+(n?' ('+n+')':''),false,true);
+}
+
+/* 動作執行器:AI 語音、深連結、未來的 MCP 都走這一個入口(同一份白名單) */
+function runActions(actions){
   let n=0;
-  if(Array.isArray(out.actions))for(const a of out.actions){
+  if(!Array.isArray(actions))return 0;
+  for(const a of actions){
     if(!a)continue;
     if(a.type==='navigate'||a.type==='tour'){
       const list=a.type==='tour'?(a.targets||a.stops||[]):[a.target];
@@ -2466,8 +2485,9 @@ async function handleVoice(blob){
       el.dispatchEvent(new Event('change')); n++;
     }
   }
-  toast(String(out.reply||'').slice(0,30)+(n?' ('+n+')':''),false,true);
+  return n;
 }
+window.stargzrRun=runActions; /* 供外部工具(MCP/自動化)呼叫 */
 
 /* 彩蛋:標題懸停(或長按)1.69 秒後浮現作者 */
 {
@@ -2494,3 +2514,42 @@ rebuildTrail(simMs);
 updateLoc();
 updateTrailFxRow();
 requestAnimationFrame(animate);
+
+/* ══ 深連結:讓其他 AI(MCP)或任何人用一條 URL 開到指定的天空 ══
+   ?dt=2026-08-16T21:30&lat=25.03&lon=121.56&lang=en
+   &target=mars            單一天體/星座
+   &tour=pluto,earth,mercury   多段導覽
+   &set=constChk:1,extraConstChk:1,scaleChk:0   任何白名單控制項
+   &click=playBtn          按鈕
+   &fov=40                 地平視角視野角度(度)
+   &compass=1              提示使用者開啟指南針對準(權限需手動點按) */
+function applyDeepLink(){
+  const q=new URLSearchParams(location.search);
+  if(!q.toString())return;
+  const acts=[];
+  const pass=[['lang','langSel'],['dt','dt'],['lat','lat'],['lon','lon'],['speed','speed'],
+              ['observe','obsSel'],['lock','lockSel'],['track','trackSel'],['retro','retroSel']];
+  pass.forEach(([k,id])=>{ if(q.get(k)!==null)acts.push({type:'set',id,value:q.get(k)}); });
+  (q.get('set')||'').split(',').filter(Boolean).forEach(kv=>{
+    const i=kv.indexOf(':'); if(i<0)return;
+    const id=kv.slice(0,i).trim(), v=kv.slice(i+1).trim();
+    const val=(v==='1'||v==='true')?true:(v==='0'||v==='false')?false:v;
+    acts.push({type:'set',id,value:val});
+  });
+  (q.get('click')||'').split(',').map(x=>x.trim()).filter(Boolean)
+    .forEach(id=>{ if(id!=='compassBtn')acts.push({type:'click',id}); });
+  const tour=(q.get('tour')||'').split(',').map(x=>x.trim()).filter(Boolean);
+  if(tour.length)acts.push({type:'tour',targets:tour});
+  else if(q.get('target'))acts.push({type:'navigate',target:q.get('target')});
+  if(!acts.length&&!q.get('fov')&&!q.get('compass'))return;
+  setTimeout(()=>{
+    const n=runActions(acts);
+    const fov=parseFloat(q.get('fov'));
+    if(isFinite(fov))ctrlR.setFov(fov);
+    if(q.get('compass')==='1'||q.get('compass')==='true')
+      toast(T('點右下角的指南針鈕即可對準真實天空(需要授權方位感測)',
+              'Tap the compass button at bottom-right to aim at the real sky'),false,true);
+    if(n)toast(T('已套用連結中的觀星設定','Applied the view from your link'),false,true);
+  },700);
+}
+applyDeepLink();

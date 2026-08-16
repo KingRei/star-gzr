@@ -1,0 +1,17 @@
+{
+  "name": "stargzr-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for 觀星者 StarGZR — headless astronomy queries plus deep links that open the simulator at a given sky",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "index.js",
+  "bin": { "stargzr-mcp": "index.js" },
+  "engines": { "node": ">=18" },
+  "files": ["index.js", "engine.js", "core.generated.js", "sync.js", "README.md"],
+  "scripts": {
+    "start": "node index.js",
+    "sync": "node sync.js",
+    "test": "node test.js"
+  },
+  "keywords": ["mcp", "astronomy", "planetarium", "stargzr", "constellations", "ephemeris"]
+}
