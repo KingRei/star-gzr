@@ -171,6 +171,7 @@ function constellationReport(name, ms, lat, lon) {
   const mags = c.data.s.map(s => s[2]);
   return {
     key: c.key, zh: c.zh, en: c.en, zodiac: c.zodiac,
+    tier: c.zodiac ? null : (c.data.t || 3),
     star_count: c.data.s.length, line_count: c.data.l.length,
     brightest_magnitude: Math.min(...mags),
     centre_ra_deg_j2000: +rdJ2000.ra.toFixed(3), centre_dec_deg_j2000: +rdJ2000.dec.toFixed(3),

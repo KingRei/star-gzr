@@ -143,7 +143,11 @@ const HANDLERS = {
   stargzr_list_constellations() {
     return {
       count: E.allConstellations().length,
-      constellations: E.allConstellations().map(c => ({ zh: c.zh, en: c.en, zodiac: c.zodiac, stars: c.data.s.length })),
+      constellations: E.allConstellations().map(c => ({
+        zh: c.zh, en: c.en, zodiac: c.zodiac, stars: c.data.s.length,
+        /* tier 1/2/3 = 網頁「其他星座」的 少/多/更多 分層;黃道十二星座另有獨立開關 */
+        tier: c.zodiac ? null : (c.data.t || 3),
+      })),
     };
   },
 };

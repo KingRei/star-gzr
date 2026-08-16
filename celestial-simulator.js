@@ -898,31 +898,32 @@ let hideHorizon=false;
 const skyGroup=new THREE.Group(); skyGroup.matrixAutoUpdate=false; sceneR.add(skyGroup);
 const starFrameR=new THREE.Group(); skyGroup.add(starFrameR); /* 恆星層:隨歲差旋轉 */
 const constGroupR=new THREE.Group(); starFrameR.add(constGroupR);
-/* 其他知名星座(左面板「其他星座」開啟後顯示於地平視角) */
+/* 其他知名星座(左面板「其他星座」開啟後顯示)。
+   t = 顯示層級:1 少(最重要)、2 多、3 更多(全部);選「多」會同時含 1、2。 */
 const EXTRA_CONST={
- 'oph':{zh:'蛇夫座',en:'Ophiuchus',s:[[263.73,12.56,2.1],[257.59,-15.72,2.4],[249.29,-10.57,2.6],[243.59,-3.69,2.7],[244.58,-4.69,3.2],[265.87,4.57,2.8],[254.42,9.38,3.2]],l:[[0,5],[5,1],[1,2],[2,4],[4,3],[3,6],[6,0]]},
- 'tri':{zh:'夏季大三角',en:'Summer Triangle',s:[[279.23,38.78,0.0],[310.36,45.28,1.25],[297.70,8.87,0.77]],l:[[0,1],[1,2],[2,0]]},
- 'cen':{zh:'半人馬座',en:'Centaurus',s:[[219.90,-60.83,0.1],[210.96,-60.37,0.6],[211.67,-36.37,2.1],[190.38,-48.96,2.2],[204.97,-53.47,2.3],[208.89,-47.29,2.5]],l:[[0,1],[1,4],[4,3],[4,5],[5,2]]},
- 'ori':{zh:'獵戶座',en:'Orion',s:[[88.79,7.41,0.5],[78.63,-8.20,0.1],[81.28,6.35,1.6],[86.94,-9.67,2.1],[85.19,-1.94,1.7],[84.05,-1.20,1.7],[83.00,-0.30,2.2],[83.78,9.93,3.4]],l:[[0,2],[2,6],[6,5],[5,4],[4,0],[6,1],[4,3],[0,7],[7,2]]},
- 'uma':{zh:'大熊座·北斗',en:'Ursa Major',s:[[165.93,61.75,1.8],[165.46,56.38,2.4],[178.46,53.69,2.4],[183.86,57.03,3.3],[193.51,55.96,1.8],[200.98,54.93,2.2],[206.89,49.31,1.9]],l:[[0,1],[1,2],[2,3],[3,0],[3,4],[4,5],[5,6]]},
- 'cas':{zh:'仙后座',en:'Cassiopeia',s:[[2.29,59.15,2.3],[10.13,56.54,2.2],[14.18,60.72,2.5],[21.45,60.24,2.7],[28.60,63.67,3.4]],l:[[0,1],[1,2],[2,3],[3,4]]},
- 'cru':{zh:'南十字座',en:'Crux',s:[[186.65,-63.10,0.8],[187.79,-57.11,1.6],[191.93,-59.69,1.3],[183.79,-58.75,2.8]],l:[[0,1],[2,3]]},
- 'cyg':{zh:'天鵝座',en:'Cygnus',s:[[310.36,45.28,1.25],[305.56,40.26,2.2],[292.68,27.96,3.1],[296.24,45.13,2.9],[311.55,33.97,2.5]],l:[[0,1],[1,2],[3,1],[1,4]]},
- 'cma':{zh:'大犬座',en:'Canis Major',s:[[101.29,-16.72,-1.46],[95.67,-17.96,1.98],[106.03,-23.83,3.0],[107.10,-26.39,1.83],[104.66,-28.97,1.5],[111.02,-29.30,2.45],[95.08,-30.06,3.0]],l:[[1,0],[0,2],[2,3],[3,5],[3,4],[4,6]]},
- 'boo':{zh:'牧夫座',en:'Boötes',s:[[213.92,19.18,-0.05],[221.25,27.07,2.35],[222.20,33.31,3.47],[225.49,40.39,3.5],[218.02,38.31,3.03],[218.02,30.37,3.58],[208.67,18.40,2.68]],l:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[0,6]]},
- 'aur':{zh:'御夫座',en:'Auriga',s:[[79.17,46.00,0.08],[89.88,44.95,1.9],[89.93,37.21,2.62],[74.25,33.17,2.69],[75.49,43.82,3.03]],l:[[0,1],[1,2],[2,3],[3,4],[4,0]]},
- 'lyr':{zh:'天琴座',en:'Lyra',s:[[279.23,38.78,0.03],[284.10,37.60,4.36],[283.63,36.90,4.30],[284.74,32.69,3.24],[282.52,33.36,3.52]],l:[[0,1],[1,2],[2,3],[3,4],[4,1]]},
- 'aql':{zh:'天鷹座',en:'Aquila',s:[[297.70,8.87,0.76],[296.56,10.61,2.72],[298.83,6.41,3.71],[286.56,3.11,3.36],[286.35,13.86,2.99],[302.83,-0.82,3.23],[286.56,-4.88,3.43]],l:[[4,1],[1,0],[0,2],[0,3],[3,6],[2,5]]},
- 'per':{zh:'英仙座',en:'Perseus',s:[[51.08,49.86,1.79],[47.04,40.96,2.12],[58.53,31.88,2.85],[59.46,40.01,2.89],[46.20,53.51,2.93],[55.73,47.79,3.01],[46.94,38.84,3.39]],l:[[4,0],[0,5],[5,3],[3,2],[0,1],[1,6]]},
- 'and':{zh:'仙女座',en:'Andromeda',s:[[2.10,29.09,2.06],[17.43,35.62,2.06],[30.97,42.33,2.10],[9.83,30.86,3.27],[14.19,38.50,3.86]],l:[[0,3],[3,1],[1,2],[1,4]]},
- 'peg':{zh:'飛馬座',en:'Pegasus',s:[[346.19,15.21,2.48],[345.94,28.08,2.42],[3.31,15.18,2.83],[2.10,29.09,2.06],[326.05,9.88,2.38],[340.37,30.22,2.94],[340.75,10.83,3.40]],l:[[3,2],[2,0],[0,1],[1,3],[0,6],[6,4],[1,5]]},
- 'umi':{zh:'小熊座·小北斗',en:'Ursa Minor',s:[[37.95,89.26,1.98],[222.68,74.16,2.08],[230.18,71.83,3.05],[251.49,75.76,4.23],[236.01,77.79,4.32],[263.05,86.59,4.36],[244.38,75.76,4.95]],l:[[0,5],[5,3],[3,4],[4,1],[1,2],[2,6],[6,4]]},
- 'dra':{zh:'天龍座',en:'Draco',s:[[269.15,51.49,2.23],[262.61,52.30,2.79],[268.38,56.87,3.75],[263.12,55.19,4.88],[288.14,67.66,3.07],[257.20,65.71,3.17],[246.00,61.51,2.73],[231.23,58.97,3.29],[211.10,64.38,3.65],[172.85,69.33,3.84]],l:[[0,2],[2,3],[3,1],[1,0],[2,4],[4,5],[5,6],[6,7],[7,8],[8,9]]},
- 'her':{zh:'武仙座',en:'Hercules',s:[[250.32,31.60,2.81],[255.07,30.93,3.92],[258.76,36.81,3.16],[250.72,38.92,3.48],[247.55,21.49,2.77],[258.66,14.39,3.06],[258.76,24.84,3.12]],l:[[0,1],[1,2],[2,3],[3,0],[0,4],[1,6],[6,5]]},
- 'crb':{zh:'北冕座',en:'Corona Borealis',s:[[233.67,26.71,2.22],[231.96,29.11,3.68],[235.07,26.30,3.84],[237.40,26.07,4.63],[239.40,26.88,4.14],[231.04,31.36,4.14],[241.30,29.85,4.99]],l:[[5,1],[1,0],[0,2],[2,3],[3,4],[4,6]]},
- 'cmi':{zh:'小犬座',en:'Canis Minor',s:[[114.83,5.22,0.34],[111.79,8.29,2.89]],l:[[0,1]]},
- 'car':{zh:'船底座',en:'Carina',s:[[95.99,-52.70,-0.74],[138.30,-69.72,1.68],[125.63,-59.51,1.86],[139.27,-59.28,2.21],[146.10,-65.07,2.97],[160.74,-64.39,2.76]],l:[[0,2],[2,3],[3,4],[4,1],[4,5]]},
- 'crv':{zh:'烏鴉座',en:'Corvus',s:[[182.53,-24.73,4.02],[188.60,-23.40,2.65],[183.95,-17.54,2.59],[187.47,-16.52,2.95],[182.09,-22.62,3.02]],l:[[2,3],[3,1],[1,4],[4,2],[4,0]]}
+ 'oph':{t:3,zh:'蛇夫座',en:'Ophiuchus',s:[[263.73,12.56,2.1],[257.59,-15.72,2.4],[249.29,-10.57,2.6],[243.59,-3.69,2.7],[244.58,-4.69,3.2],[265.87,4.57,2.8],[254.42,9.38,3.2]],l:[[0,5],[5,1],[1,2],[2,4],[4,3],[3,6],[6,0]]},
+ 'tri':{t:1,zh:'夏季大三角',en:'Summer Triangle',s:[[279.23,38.78,0.0],[310.36,45.28,1.25],[297.70,8.87,0.77]],l:[[0,1],[1,2],[2,0]]},
+ 'cen':{t:3,zh:'半人馬座',en:'Centaurus',s:[[219.90,-60.83,0.1],[210.96,-60.37,0.6],[211.67,-36.37,2.1],[190.38,-48.96,2.2],[204.97,-53.47,2.3],[208.89,-47.29,2.5]],l:[[0,1],[1,4],[4,3],[4,5],[5,2]]},
+ 'ori':{t:1,zh:'獵戶座',en:'Orion',s:[[88.79,7.41,0.5],[78.63,-8.20,0.1],[81.28,6.35,1.6],[86.94,-9.67,2.1],[85.19,-1.94,1.7],[84.05,-1.20,1.7],[83.00,-0.30,2.2],[83.78,9.93,3.4]],l:[[0,2],[2,6],[6,5],[5,4],[4,0],[6,1],[4,3],[0,7],[7,2]]},
+ 'uma':{t:1,zh:'大熊座·北斗',en:'Ursa Major',s:[[165.93,61.75,1.8],[165.46,56.38,2.4],[178.46,53.69,2.4],[183.86,57.03,3.3],[193.51,55.96,1.8],[200.98,54.93,2.2],[206.89,49.31,1.9]],l:[[0,1],[1,2],[2,3],[3,0],[3,4],[4,5],[5,6]]},
+ 'cas':{t:1,zh:'仙后座',en:'Cassiopeia',s:[[2.29,59.15,2.3],[10.13,56.54,2.2],[14.18,60.72,2.5],[21.45,60.24,2.7],[28.60,63.67,3.4]],l:[[0,1],[1,2],[2,3],[3,4]]},
+ 'cru':{t:1,zh:'南十字座',en:'Crux',s:[[186.65,-63.10,0.8],[187.79,-57.11,1.6],[191.93,-59.69,1.3],[183.79,-58.75,2.8]],l:[[0,1],[2,3]]},
+ 'cyg':{t:1,zh:'天鵝座',en:'Cygnus',s:[[310.36,45.28,1.25],[305.56,40.26,2.2],[292.68,27.96,3.1],[296.24,45.13,2.9],[311.55,33.97,2.5]],l:[[0,1],[1,2],[3,1],[1,4]]},
+ 'cma':{t:1,zh:'大犬座',en:'Canis Major',s:[[101.29,-16.72,-1.46],[95.67,-17.96,1.98],[106.03,-23.83,3.0],[107.10,-26.39,1.83],[104.66,-28.97,1.5],[111.02,-29.30,2.45],[95.08,-30.06,3.0]],l:[[1,0],[0,2],[2,3],[3,5],[3,4],[4,6]]},
+ 'boo':{t:2,zh:'牧夫座',en:'Boötes',s:[[213.92,19.18,-0.05],[221.25,27.07,2.35],[222.20,33.31,3.47],[225.49,40.39,3.5],[218.02,38.31,3.03],[218.02,30.37,3.58],[208.67,18.40,2.68]],l:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[0,6]]},
+ 'aur':{t:2,zh:'御夫座',en:'Auriga',s:[[79.17,46.00,0.08],[89.88,44.95,1.9],[89.93,37.21,2.62],[74.25,33.17,2.69],[75.49,43.82,3.03]],l:[[0,1],[1,2],[2,3],[3,4],[4,0]]},
+ 'lyr':{t:2,zh:'天琴座',en:'Lyra',s:[[279.23,38.78,0.03],[284.10,37.60,4.36],[283.63,36.90,4.30],[284.74,32.69,3.24],[282.52,33.36,3.52]],l:[[0,1],[1,2],[2,3],[3,4],[4,1]]},
+ 'aql':{t:2,zh:'天鷹座',en:'Aquila',s:[[297.70,8.87,0.76],[296.56,10.61,2.72],[298.83,6.41,3.71],[286.56,3.11,3.36],[286.35,13.86,2.99],[302.83,-0.82,3.23],[286.56,-4.88,3.43]],l:[[4,1],[1,0],[0,2],[0,3],[3,6],[2,5]]},
+ 'per':{t:2,zh:'英仙座',en:'Perseus',s:[[51.08,49.86,1.79],[47.04,40.96,2.12],[58.53,31.88,2.85],[59.46,40.01,2.89],[46.20,53.51,2.93],[55.73,47.79,3.01],[46.94,38.84,3.39]],l:[[4,0],[0,5],[5,3],[3,2],[0,1],[1,6]]},
+ 'and':{t:2,zh:'仙女座',en:'Andromeda',s:[[2.10,29.09,2.06],[17.43,35.62,2.06],[30.97,42.33,2.10],[9.83,30.86,3.27],[14.19,38.50,3.86]],l:[[0,3],[3,1],[1,2],[1,4]]},
+ 'peg':{t:2,zh:'飛馬座',en:'Pegasus',s:[[346.19,15.21,2.48],[345.94,28.08,2.42],[3.31,15.18,2.83],[2.10,29.09,2.06],[326.05,9.88,2.38],[340.37,30.22,2.94],[340.75,10.83,3.40]],l:[[3,2],[2,0],[0,1],[1,3],[0,6],[6,4],[1,5]]},
+ 'umi':{t:2,zh:'小熊座·小北斗',en:'Ursa Minor',s:[[37.95,89.26,1.98],[222.68,74.16,2.08],[230.18,71.83,3.05],[251.49,75.76,4.23],[236.01,77.79,4.32],[263.05,86.59,4.36],[244.38,75.76,4.95]],l:[[0,5],[5,3],[3,4],[4,1],[1,2],[2,6],[6,4]]},
+ 'dra':{t:3,zh:'天龍座',en:'Draco',s:[[269.15,51.49,2.23],[262.61,52.30,2.79],[268.38,56.87,3.75],[263.12,55.19,4.88],[288.14,67.66,3.07],[257.20,65.71,3.17],[246.00,61.51,2.73],[231.23,58.97,3.29],[211.10,64.38,3.65],[172.85,69.33,3.84]],l:[[0,2],[2,3],[3,1],[1,0],[2,4],[4,5],[5,6],[6,7],[7,8],[8,9]]},
+ 'her':{t:3,zh:'武仙座',en:'Hercules',s:[[250.32,31.60,2.81],[255.07,30.93,3.92],[258.76,36.81,3.16],[250.72,38.92,3.48],[247.55,21.49,2.77],[258.66,14.39,3.06],[258.76,24.84,3.12]],l:[[0,1],[1,2],[2,3],[3,0],[0,4],[1,6],[6,5]]},
+ 'crb':{t:3,zh:'北冕座',en:'Corona Borealis',s:[[233.67,26.71,2.22],[231.96,29.11,3.68],[235.07,26.30,3.84],[237.40,26.07,4.63],[239.40,26.88,4.14],[231.04,31.36,4.14],[241.30,29.85,4.99]],l:[[5,1],[1,0],[0,2],[2,3],[3,4],[4,6]]},
+ 'cmi':{t:3,zh:'小犬座',en:'Canis Minor',s:[[114.83,5.22,0.34],[111.79,8.29,2.89]],l:[[0,1]]},
+ 'car':{t:3,zh:'船底座',en:'Carina',s:[[95.99,-52.70,-0.74],[138.30,-69.72,1.68],[125.63,-59.51,1.86],[139.27,-59.28,2.21],[146.10,-65.07,2.97],[160.74,-64.39,2.76]],l:[[0,2],[2,3],[3,4],[4,1],[4,5]]},
+ 'crv':{t:3,zh:'烏鴉座',en:'Corvus',s:[[182.53,-24.73,4.02],[188.60,-23.40,2.65],[183.95,-17.54,2.59],[187.47,-16.52,2.95],[182.09,-22.62,3.02]],l:[[2,3],[3,1],[1,4],[4,2],[4,0]]}
 };
 const extraGroupR=new THREE.Group(); extraGroupR.visible=false; starFrameR.add(extraGroupR);
 const ECL_POLE_EQ=new THREE.Vector3(0,-Math.sin(OBLQ),Math.cos(OBLQ));
@@ -973,8 +974,16 @@ let starsR, eclLineR, eqLineR, signSkyGroup, showEclLines=false; /* 參考線預
     signSkyGroup.add(sl);
   }
   buildConstellations(constGroupR, DOME*0.95, v=>v.clone(), 4.4, 'R', 1, true);
-  buildConstellations(extraGroupR, DOME*0.95, v=>v.clone(), 4.4, 'R', 1, true, EXTRA_CONST);
-  buildConstellations(window._extraGroupL, SPHERE_R*0.97, v=>eqToEclWorld(v), 7.5, 'L', 1.15, false, EXTRA_CONST);
+  /* 其他星座依 t 分成三層各建一個子群組,切換「少/多/更多」時只改 visible,
+     不用重建幾何(星點是每次呼叫合併成一個 Points,所以必須分群才切得動) */
+  window._extraTierR=[]; window._extraTierL=[];
+  for(let t=1;t<=3;t++){
+    const sub={}; for(const k in EXTRA_CONST) if((EXTRA_CONST[k].t||3)===t) sub[k]=EXTRA_CONST[k];
+    const gR=new THREE.Group(); extraGroupR.add(gR); window._extraTierR.push(gR);
+    const gL=new THREE.Group(); window._extraGroupL.add(gL); window._extraTierL.push(gL);
+    buildConstellations(gR, DOME*0.95, v=>v.clone(), 4.4, 'R', 1, true, sub);
+    buildConstellations(gL, SPHERE_R*0.97, v=>eqToEclWorld(v), 7.5, 'L', 1.15, false, sub);
+  }
   const pol=eqUnit(37.95*DEG,89.264*DEG).multiplyScalar(DOME*0.96);
   const star=makeGlow('rgba(255,255,255,1)','rgba(160,200,255,.5)',7); star.position.copy(pol);
   starFrameR.add(star); regGlowR(star);
@@ -1449,6 +1458,9 @@ function applyLang(){
   });
   const vb=document.getElementById('viewBodySel');
   [...vb.options].forEach((o,i)=>o.textContent=VIEWBODY_STR[i][k]);
+  const xl=document.getElementById('extraLvlSel');
+  const XLVL_STR={min:['少','Few'],mid:['多','More'],all:['更多','All']};
+  [...xl.options].forEach(o=>{ if(XLVL_STR[o.value])o.textContent=XLVL_STR[o.value][k]; });
   const ls=document.getElementById('lockSel');
   [...ls.options].forEach((o,i)=>{
     if(i<LOCK_STR.length)o.textContent=LOCK_STR[i][k];
@@ -1599,10 +1611,29 @@ document.getElementById('signChk').addEventListener('change',e=>{
   signBelt.visible=e.target.checked;                       /* 日心:彩色區塊 */
   if(signSkyGroup)signSkyGroup.visible=e.target.checked;   /* 地平:虛線分界+文字 */
 });
-document.getElementById('extraConstChk').addEventListener('change',e=>{
-  extraGroupR.visible=e.target.checked;
-  window._extraGroupL.visible=e.target.checked;
-});
+const EXTRA_LVL={min:1,mid:2,all:3};
+function applyExtraLevel(){
+  const on=document.getElementById('extraConstChk').checked;
+  const lv=EXTRA_LVL[document.getElementById('extraLvlSel').value]||3;
+  extraGroupR.visible=on; window._extraGroupL.visible=on;
+  for(let i=0;i<3;i++){
+    if(window._extraTierR[i])window._extraTierR[i].visible=(i<lv);
+    if(window._extraTierL[i])window._extraTierL[i].visible=(i<lv);
+  }
+}
+/* 導覽到某個星座時,若它的層級沒開就自動放寬到看得見為止 */
+function ensureExtraVisible(nm){
+  const c=EXTRA_CONST[nm]; if(!c)return;
+  const sel=document.getElementById('extraLvlSel');
+  const want=c.t||3;
+  if((EXTRA_LVL[sel.value]||3)<want){
+    sel.value=want===1?'min':want===2?'mid':'all';
+  }
+  applyExtraLevel();
+}
+document.getElementById('extraConstChk').addEventListener('change',applyExtraLevel);
+document.getElementById('extraLvlSel').addEventListener('change',applyExtraLevel);
+applyExtraLevel(); /* 開場先對齊一次(預設:未勾選、層級=更多) */
 document.getElementById('orbitChk').addEventListener('change',e=>orbitGroup.visible=e.target.checked);
 const camStateN={r:CAM_REF,theta:0.55,phi:1.05,tx:0,ty:0,tz:0};
 const camStateT={r:2200,theta:0.55,phi:1.05,tx:0,ty:0,tz:0};
@@ -2259,6 +2290,7 @@ function navStep(){
     const nm=nav.key.slice(2);
     const ids=['sphereChk','constChk']; if(EXTRA_CONST[nm])ids.push('extraConstChk');
     ids.forEach(id=>{const el=document.getElementById(id); if(el&&!el.checked){el.checked=true; el.dispatchEvent(new Event('change'));}});
+    ensureExtraVisible(nm);
     highlightConst(nm);
   } else { clearConstHighlight(); }
   nav.L0={target:ctrlL.target.clone(),r:ctrlL.r,theta:ctrlL.theta,phi:ctrlL.phi};
@@ -2356,11 +2388,12 @@ function getKey(enc,lsKey,msg){
 }
 const AI_IDS=['dt','speed','lat','lon','langSel','tidalChk','phaseChk','sphereChk','signChk','orbitChk',
  'scaleChk','obsSel','retroSel','trailChk','trackSel','lockSel','constChk','eclLineChk','bgStarChk',
- 'dayChk','textChk','hideHorChk','invChk','trailFxChk','playBtn','nowBtn','resetViewBtn','homeBtn','retroTableBtn','compassBtn'];
+ 'dayChk','textChk','hideHorChk','invChk','trailFxChk','extraConstChk','extraLvlSel','viewBodySel',
+ 'playBtn','nowBtn','resetViewBtn','homeBtn','retroTableBtn','compassBtn'];
 const AI_SPEC=`Controls. set:{"type":"set","id":ID,"value":V}; click:{"type":"click","id":ID}.
 dt "YYYY-MM-DDTHH:MM"; speed 3600000|7200000|10800000|21600000|86400000|259200000|864000000|-86400000 (ms sim per s); lat -89.9..89.9; lon -180..180; langSel zh|en.
 Checkbox bool: tidalChk tidal, phaseChk moon-phase&shadows, sphereChk celestial-sphere, signChk zodiac-sectors, orbitChk orbits, scaleChk true-scale, trailChk retro-trail, constChk constellations, eclLineChk ref-lines, bgStarChk stars, dayChk day/night, textChk labels, hideHorChk hide-horizon, invChk invert-drag, trailFxChk motion-trails(only |speed|>=86400000).
-Select: obsSel none|sun|p0..p8|moon (follow, true-scale only); retroSel 0|1|3|4|5|6|7|8 = Mercury..Pluto; trackSel off|ecl_e|ecl_w|lun_e|lun_w axis-lock; lockSel none|sun|moon|c:牡羊座|c:金牛座|c:雙子座|c:巨蟹座|c:獅子座|c:處女座|c:天秤座|c:天蠍座|c:射手座|c:摩羯座|c:水瓶座|c:雙魚座.
+Select: viewBodySel earth|moon|mars|titan = WHERE the observer stands (sky pane is rendered from that world; changed in the LEFT pane); extraLvlSel min|mid|all = how many extra constellations (few / more / all 23, needs extraConstChk true); obsSel none|sun|p0..p8|moon (follow, true-scale only); retroSel 0|1|3|4|5|6|7|8 = Mercury..Pluto; trackSel off|ecl_e|ecl_w|lun_e|lun_w axis-lock; lockSel none|sun|moon|c:牡羊座|c:金牛座|c:雙子座|c:巨蟹座|c:獅子座|c:處女座|c:天秤座|c:天蠍座|c:射手座|c:摩羯座|c:水瓶座|c:雙魚座.
 Click: compassBtn toggle compass-aim (phone points at the real sky using its orientation sensor; mobile only, asks permission, cancelled by dragging), playBtn toggle-play, nowBtn now, resetViewBtn initial-view (reset BOTH panes to opening state: sky faces due east above horizon, heliocentric default framing; clears any follow/lock/tour), homeBtn reset-view, retroTableBtn retrograde-table.
 navigate/tour (camera fly — BOTH panes zoom smoothly): {"type":"navigate","target":BODY} single hop, or {"type":"tour","targets":[BODY,...]} multi-stop. BODY=sun|moon|mercury|venus|earth|mars|jupiter|saturn|uranus|neptune|pluto (Chinese names also accepted). Use for: go to / show me / fly to / navigate / 導覽 / tour from X to Y to Z. "outermost planet / 最外圍行星"=pluto, "innermost / 最內圍"=mercury, "nine planets / 九顆行星"=mercury..pluto in order. BODY may also be a CONSTELLATION name (zodiac or listed), e.g. 牡羊座/Aries, 獅子座/Leo, 天蠍座/Scorpius (zh or en) — constellations turn only the sky pane.`;
 const AI_SYS='You operate a celestial simulator and answer astronomy questions ONLY. '+

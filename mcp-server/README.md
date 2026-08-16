@@ -45,7 +45,7 @@ All three env vars are optional; lat/lon are just defaults that any tool call ca
 | `stargzr_moon_phase` | 距角、照亮比例、月齡、月相名稱 |
 | `stargzr_retrogrades` | 某行星某年的所有逆行區間（起訖 UTC 與天數，二分法逼近到分鐘） |
 | `stargzr_constellation` | 星座中心座標（J2000 與當日歲差後）、地平高度方位、最亮星等，附一條開啟連結 |
-| `stargzr_list_constellations` | 列出全部 35 個星座（12 黃道 + 23 知名星座） |
+| `stargzr_list_constellations` | 列出全部 35 個星座（12 黃道 + 23 知名星座），含 `tier` 1/2/3 對應網頁的少/多/更多 |
 
 ### 對話示範 / Example
 
@@ -65,6 +65,8 @@ AI 會呼叫 `stargzr_body{body:"mars"}` 得到高度 49.5°、方位 82°（正
 `dt` 時間、`lat`/`lon` 觀測地、`lang` 語言、`speed` 模擬速度、`target` 單一目標、
 `tour` 逗號分隔多站、`set` 逗號分隔的 `id:value`、`click` 逗號分隔按鈕 id、
 `fov` 地平視野角度、`compass=1` 提示開啟指南針對準。
+
+常用的 `set` 目標：`viewBodySel:titan` 換觀察地（earth/moon/mars/titan）、`extraConstChk:1,extraLvlSel:min` 開其他星座並只顯示最重要的七個（min/mid/all）。
 
 ## 同步 / Keeping in sync
 

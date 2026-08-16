@@ -42,6 +42,8 @@ into a whitelisted action list and applied to both panes.
 - 「顯示逆行表」 · *"show me the retrograde table"*
 - 「切成真實比例」 · *"switch to true scale"*
 - 「把觀測地換到冰島」 · *"move the observer to Iceland"*
+- 「站到泰坦上看土星」 · *"stand on Titan and look at Saturn"*
+- 「其他星座只留最重要的」 · *"show only the few most important extra constellations"*
 
 語音走的是同一份白名單 `runActions()`；深連結與 MCP 也走這個入口，所以三種操作方式行為完全一致。
 Voice, deep links and MCP all funnel through the same `runActions()` whitelist, so they behave identically.
@@ -67,6 +69,29 @@ positions, the precession circle, and the tropical sign sectors drifting against
 A first-person view from any latitude/longitude: horizon, cardinal marks, alt-az grid, the ecliptic
 and the Moon's path, constellation stick figures, planets, Sun, and a correctly phased Moon whose
 bright limb always faces the Sun. Retrograde loops are traced live, solid for past, dashed for future.
+
+### 四種觀察地 / Four worlds to stand on
+
+天空不只從地球看得到 —— 觀察地可以整顆換掉，天空面板會改由那顆星球的表面重新算起：
+
+The sky view is not Earth-only. Move the observer to another world and the whole pane is re-rendered
+from that surface — sky colour, air, spin rate, and what hangs overhead all change:
+
+<b style="color:#4F8FE6">■ 地球 Earth</b> ·
+<b style="color:#CFCFD6">■ 月球 Moon</b> ·
+<b style="color:#E0603C">■ 火星 Mars</b> ·
+<b style="color:#E0B36A">■ 泰坦 Titan</b>
+
+| 觀察地 | 天空 | 特別之處 |
+|---|---|---|
+| <b style="color:#4F8FE6">地球 Earth</b> | 藍天／夜空，23.4° 傾角、1 恆星日 | 預設；日月食、農曆、指南針對準都在這裡 |
+| <b style="color:#CFCFD6">月球 Moon</b> | 真空，全黑天空、白晝仍見星 | 27.32 日潮汐鎖定自轉；天上掛著會轉的地球（相位與地照正確） |
+| <b style="color:#E0603C">火星 Mars</b> | 塵埃散射的橘紅天空 | 24h37m 自轉；地球退成一顆晨昏星，月球不再單獨可見 |
+| <b style="color:#E0B36A">泰坦 Titan</b> | 1.45 atm 甲烷霾，永恆昏橙、整體再暗一階 | 15.945 日潮汐鎖定；土星帶著環佔滿半邊天，可鎖定 |
+
+切換位置在**左側日心視角**面板的「觀察地」下拉選單（`viewBodySel`）。語音也行：說「站到泰坦上看」。
+Switch it from the **left, heliocentric pane** — the *Observer* dropdown (`viewBodySel`) — or just say
+*"stand on Titan"*.
 
 ---
 
@@ -143,8 +168,15 @@ https://gazer.star-gzr.com/?dt=2026-08-16T21:30&lat=25.03&lon=121.56
   月球在 0.83 單位（60.3 地球半徑）外，影錐長度幾何精確。
 - **處處歲差 / Precession everywhere** — 星位、北極星、極點標記、回歸宮帶都以 50.29″/yr 移動。
   拉過千年，看織女星在約西元 13,800 年成為北極星。
-- **35 個星座 / 35 constellations** — 黃道 12 星座＋23 個知名星座（獵戶、大熊、仙后、天鵝、天琴、天鷹、
-  英仙、仙女、飛馬、小熊、天龍、武仙、北冕、小犬、船底、烏鴉、半人馬、蛇夫、南十字、夏季大三角…）。
+- **35 個星座、三段密度 / 35 constellations, three densities** — 黃道 12 星座之外另有 23 個知名星座，
+  在「其他星座」旁邊選 **少 / 多 / 更多**（`extraLvlSel`），天空要清爽還是要熱鬧自己決定：
+  - **少 Few（7）** — 獵戶、大熊·北斗、仙后、天鵝、南十字、大犬、夏季大三角：先認得出方位的那幾個。
+  - **多 More（15）** — 再加牧夫、御夫、天琴、天鷹、英仙、仙女、飛馬、小熊·小北斗。
+  - **更多 All（23）** — 全部畫出來，補上蛇夫、半人馬、天龍、武仙、北冕、小犬、船底、烏鴉。
+
+  導覽到某個星座時，若它的層級還沒開，會自動放寬到看得見為止。
+  Pick Few / More / All next to *More constellations*; navigating to a constellation auto-raises the
+  level until it is visible.
 - 雙語介面（繁體中文／English），連場景內 3D 標籤都會切換；手機友善（直式堆疊、橫式並排、捏合縮放、面板可收合）。
 
 ---
