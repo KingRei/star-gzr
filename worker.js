@@ -15,6 +15,9 @@
  */
 
 const GROQ_DIRECT = 'https://api.groq.com/openai/v1';
+// Gemini 的 OpenAI 相容層:路徑與請求格式和 OpenAI 一樣,
+// 所以前端不用改,只是 model 名稱要寫 gemini-*,金鑰一樣走 Authorization: Bearer。
+const GEMINI_DIRECT = 'https://generativelanguage.googleapis.com/v1beta/openai';
 // GitHub Models 的新端點（舊的 models.inference.ai.azure.com 已退場）
 // 這個端點的 model 名稱要帶 vendor 前綴，例如 openai/gpt-4o-mini
 const LLM_DIRECT  = 'https://models.github.ai/inference';
@@ -27,6 +30,37 @@ function bases(env) {
     groq: env.GROQ_BASE || `${gw}/groq`,
     llm:  env.LLM_BASE  || `${gw}/azure-openai`,
     via:  'gateway',
+  };
+}
+
+/**
+ * 決定這次要用哪家對話模型。
+ *   LLM_PROVIDER=gemini|github 明講最優先;
+ *   沒講的話,有 GEMINI_API_KEY 而沒有 GH_MODELS_TOKEN 就自動用 Gemini。
+ * 兩家都是 OpenAI 相容格式,所以只差 base / model / 金鑰。
+ * 注意:Gemini 走原生相容端點,不吃 AI Gateway 的 azure-openai 路徑;
+ * 想經 Gateway 請把 GEMINI_BASE 設成 .../google-ai-studio 的相容路徑。
+ */
+function llmCfg(env, B) {
+  const pick = String(env.LLM_PROVIDER || '').toLowerCase()
+    || (env.GEMINI_API_KEY && !env.GH_MODELS_TOKEN ? 'gemini' : 'github');
+  if (pick === 'gemini') {
+    return {
+      name: 'gemini',
+      base: env.GEMINI_BASE || GEMINI_DIRECT,
+      model: env.GEMINI_MODEL || 'gemini-2.0-flash',
+      key: env.GEMINI_API_KEY,
+      keyName: 'GEMINI_API_KEY',
+      useGwHeaders: false,
+    };
+  }
+  return {
+    name: 'github',
+    base: B.llm,
+    model: env.GH_MODEL || 'openai/gpt-4o-mini',
+    key: env.GH_MODELS_TOKEN,
+    keyName: 'GH_MODELS_TOKEN',
+    useGwHeaders: true,
   };
 }
 
@@ -60,10 +94,13 @@ export default {
     // 只回報「有沒有設」，不回報任何金鑰內容。
     if (url.pathname === '/api/diag') {
       const has = k => (env[k] ? 'set' : 'MISSING');
+      const L = llmCfg(env, B);
       const out = {
         via: B.via,
         groq_base: B.groq,
-        llm_base: B.llm,
+        llm_provider: L.name,
+        llm_base: L.base,
+        llm_model: L.model,
         vars: {
           CF_ACCOUNT_ID: has('CF_ACCOUNT_ID'),
           CF_GATEWAY_ID: has('CF_GATEWAY_ID'),
@@ -71,6 +108,7 @@ export default {
           CF_AIG_TOKEN: has('CF_AIG_TOKEN'),
           GROQ_API_KEY: has('GROQ_API_KEY'),
           GH_MODELS_TOKEN: has('GH_MODELS_TOKEN'),
+          GEMINI_API_KEY: has('GEMINI_API_KEY'),
         },
         probes: {},
       };
@@ -82,13 +120,13 @@ export default {
         out.probes.groq = { status: r.status, body: (await r.text()).slice(0, 200) };
       } catch (e) { out.probes.groq = { error: String(e) }; }
       try {
-        const r = await fetch(`${B.llm}/chat/completions`, {
+        const r = await fetch(`${L.base}/chat/completions`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json', ...aig,
-            ...(env.GH_MODELS_TOKEN ? { Authorization: `Bearer ${env.GH_MODELS_TOKEN}` } : {}),
+            'Content-Type': 'application/json', ...(L.useGwHeaders ? aig : {}),
+            ...(L.key ? { Authorization: `Bearer ${L.key}` } : {}),
           },
-          body: JSON.stringify({ model: env.GH_MODEL || 'openai/gpt-4o-mini', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
+          body: JSON.stringify({ model: L.model, max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
         });
         out.probes.llm = { status: r.status, body: (await r.text()).slice(0, 200) };
       } catch (e) { out.probes.llm = { error: String(e) }; }
@@ -130,19 +168,22 @@ export default {
 
       // ── 對話模型：GitHub Models（OpenAI 相容）──
       if (url.pathname === '/api/llm') {
-        if (!env.GH_MODELS_TOKEN && B.via === 'direct') {
-          return new Response(JSON.stringify({ error: 'GH_MODELS_TOKEN not set on Worker' }), { status: 500, headers: cors });
+        const L = llmCfg(env, B);
+        if (!L.key && !(B.via === 'gateway' && L.useGwHeaders)) {
+          return new Response(JSON.stringify({ error: `${L.keyName} not set on Worker` }), { status: 500, headers: cors });
         }
         // 前端送 gpt-4o-mini；這裡統一改寫成該端點認得的名稱
         let payload = {};
         try { payload = JSON.parse(await req.text()); } catch (_) {}
-        payload.model = env.GH_MODEL || 'openai/gpt-4o-mini';
+        payload.model = L.model;
+        // Gemini 相容層不吃某些 OpenAI 專屬欄位,先拿掉以免 400
+        if (L.name === 'gemini') { delete payload.frequency_penalty; delete payload.presence_penalty; delete payload.logit_bias; }
 
-        const r = await fetch(`${B.llm}/chat/completions`, {
+        const r = await fetch(`${L.base}/chat/completions`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json', ...aig,
-            ...(env.GH_MODELS_TOKEN ? { Authorization: `Bearer ${env.GH_MODELS_TOKEN}` } : {}),
+            'Content-Type': 'application/json', ...(L.useGwHeaders ? aig : {}),
+            ...(L.key ? { Authorization: `Bearer ${L.key}` } : {}),
           },
           body: JSON.stringify(payload),
         });

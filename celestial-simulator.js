@@ -1633,7 +1633,7 @@ function ensureExtraVisible(nm){
 }
 document.getElementById('extraConstChk').addEventListener('change',applyExtraLevel);
 document.getElementById('extraLvlSel').addEventListener('change',applyExtraLevel);
-applyExtraLevel(); /* 開場先對齊一次(預設:未勾選、層級=更多) */
+applyExtraLevel(); /* 開場先對齊一次(預設:已勾選、層級=少 —— 一開場就看得到幾個好認的星座) */
 document.getElementById('orbitChk').addEventListener('change',e=>orbitGroup.visible=e.target.checked);
 const camStateN={r:CAM_REF,theta:0.55,phi:1.05,tx:0,ty:0,tz:0};
 const camStateT={r:2200,theta:0.55,phi:1.05,tx:0,ty:0,tz:0};

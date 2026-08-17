@@ -170,7 +170,8 @@ https://gazer.star-gzr.com/?dt=2026-08-16T21:30&lat=25.03&lon=121.56
   拉過千年，看織女星在約西元 13,800 年成為北極星。
 - **35 個星座、三段密度 / 35 constellations, three densities** — 黃道 12 星座之外另有 23 個知名星座，
   在「其他星座」旁邊選 **少 / 多 / 更多**（`extraLvlSel`），天空要清爽還是要熱鬧自己決定：
-  - **少 Few（7）** — 獵戶、大熊·北斗、仙后、天鵝、南十字、大犬、夏季大三角：先認得出方位的那幾個。
+  - **少 Few（7，預設）** — 獵戶、大熊·北斗、仙后、天鵝、南十字、大犬、夏季大三角：先認得出方位的那幾個。
+    一開場就已經勾選並停在這一段，天空乾淨但不空。
   - **多 More（15）** — 再加牧夫、御夫、天琴、天鷹、英仙、仙女、飛馬、小熊·小北斗。
   - **更多 All（23）** — 全部畫出來，補上蛇夫、半人馬、天龍、武仙、北冕、小犬、船底、烏鴉。
 
@@ -192,12 +193,18 @@ https://gazer.star-gzr.com/?dt=2026-08-16T21:30&lat=25.03&lon=121.56
 | `mcp-server/` | MCP 伺服器與無頭天文引擎 / MCP server and headless engine |
 | `cloudflare-ai-proxy/` | 舊版獨立代理 Worker，保留為備援 / legacy standalone proxy |
 
-部署：把根目錄丟給任何靜態主機即可；語音助理需要 Cloudflare Worker 代理（`GROQ_API_KEY`、
-`GH_MODELS_TOKEN` 存成 Secret，切勿寫進 `wrangler.toml` 或 commit 進版控）。
+部署：把根目錄丟給任何靜態主機即可；語音助理需要 Cloudflare Worker 代理。
+語音辨識用 Groq Whisper（`GROQ_API_KEY`）；對話模型二選一 —— GitHub Models（`GH_MODELS_TOKEN`，預設）
+或 Google Gemini（`GEMINI_API_KEY`）。只設 Gemini 就會自動切過去，也可用 `LLM_PROVIDER=gemini|github`
+明講、`GEMINI_MODEL` 指定型號（預設 `gemini-2.0-flash`）。兩家都走 OpenAI 相容格式，前端不用改。
+所有金鑰一律存成 Secret，切勿寫進 `wrangler.toml` 或 commit 進版控。
 本機使用直接開 `index.html`；沒有代理時語音會改問你要不要自帶 API key。
+`/api/diag` 會告訴你目前選到哪家、金鑰有沒有設、上游回什麼狀態碼。
 
-Deploy the root directory to any static host. The voice assistant proxies through the Worker —
-keep `GROQ_API_KEY` and `GH_MODELS_TOKEN` as dashboard **Secrets**, never in `wrangler.toml` or git.
+Deploy the root directory to any static host. The voice assistant proxies through the Worker: Groq
+Whisper for speech, and either GitHub Models or Gemini for the chat model (both OpenAI-compatible).
+Keep every key as a dashboard **Secret**, never in `wrangler.toml` or git; `/api/diag` reports which
+provider is active.
 
 ---
 

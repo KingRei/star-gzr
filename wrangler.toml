@@ -23,10 +23,16 @@ ALLOWED_ORIGINS = "https://gazer.star-gzr.com,http://localhost:8888"
 # 想改走 Cloudflare AI Gateway 再設成 "1"；路徑不合時可用
 # GROQ_BASE / LLM_BASE 覆寫完整前綴。
 USE_GATEWAY = "0"
+# 對話模型二選一:預設 GitHub Models;設了 GEMINI_API_KEY 而沒設 GH_MODELS_TOKEN
+# 就自動改用 Gemini。要明講就把下面這行取消註解(gemini | github),
+# 型號可用 GEMINI_MODEL 覆寫(預設 gemini-2.0-flash)。
+# LLM_PROVIDER = "gemini"
+# GEMINI_MODEL = "gemini-2.0-flash"
 
 # ── 機密(Secret)絕對不要寫在這個檔案 ──
 # 儀表板：Workers & Pages → star-gzr → Settings → Variables and Secrets → Add，型別選 Secret
 #   CF_AIG_TOKEN     （Authenticated Gateway 用）
 #   GROQ_API_KEY     （若非 BYOK 才需要）
 #   GH_MODELS_TOKEN  （若非 BYOK 才需要）
+#   GEMINI_API_KEY   （改用 Gemini 時)
 # 或用 CLI：npx wrangler secret put CF_AIG_TOKEN
