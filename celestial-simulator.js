@@ -448,6 +448,21 @@ function highlightConst(nm){
     CONST_LINES[k].forEach(e=>{ e.mat.color.setHex(on?0xFFE08A:0x6a7db3); e.mat.opacity=on?1:0.5; }); }
 }
 function clearConstHighlight(){ highlightConst(null); }
+/* 星點貼圖:PointsMaterial 預設是方塊,貼一張圓形 alpha 圖才會是圓點(只做一次) */
+let _starDiscTex=null;
+function starDisc(){
+  if(_starDiscTex)return _starDiscTex;
+  const N=64, cv=document.createElement('canvas'); cv.width=cv.height=N;
+  const x=cv.getContext('2d');
+  const g=x.createRadialGradient(N/2,N/2,0,N/2,N/2,N/2);
+  g.addColorStop(0,'rgba(255,255,255,1)');
+  g.addColorStop(0.55,'rgba(255,255,255,1)');
+  g.addColorStop(0.78,'rgba(255,255,255,0.72)');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=g; x.beginPath(); x.arc(N/2,N/2,N/2,0,Math.PI*2); x.fill();
+  _starDiscTex=new THREE.CanvasTexture(cv);
+  return _starDiscTex;
+}
 function buildConstellations(parent, radius, toVec, labelH, group, ptScale, stripGlyph, dataset){
   const DATA=dataset||ZODIAC;
   const buckets=[[],[],[],[]];
@@ -480,7 +495,8 @@ function buildConstellations(parent, radius, toVec, labelH, group, ptScale, stri
     const g=new THREE.BufferGeometry();
     g.setAttribute('position',new THREE.Float32BufferAttribute(arr,3));
     parent.add(new THREE.Points(g,new THREE.PointsMaterial({
-      color:0xdbe4ff,size:sizes[i],sizeAttenuation:false,transparent:true,opacity:i<2?1:0.85})));
+      color:0xdbe4ff,size:sizes[i],sizeAttenuation:false,transparent:true,opacity:i<2?1:0.85,
+      map:starDisc(),alphaTest:0.35,depthWrite:false})));
   });
 }
 
@@ -1186,6 +1202,7 @@ document.getElementById('viewBodySel').addEventListener('change',e=>{
   viewBody=e.target.value;
   needTrailClear=true;
   syncObserverUI();
+  try{ syncViewBodyChip(); }catch(_){}
 });
 
 /* 白道:月球軌道面在天球上的路徑(對黃道傾約 5.1°,交點 18.6 年退行一圈) */
@@ -1411,6 +1428,7 @@ const UI_STR={
   uiTrack:['軸置中','Axis lock'],
   uiInv:['反向拖曳','Invert drag'],
   uiHideHor:['隱藏地平線','Hide horizon'],
+  uiHideBtn:['隱藏按鈕','Hide buttons'],
   uiTrailFx:['運動殘影(星軌)','Motion trails (star arcs)'],
   anchorHint:['＊ 周日運動已凍結(等效每天同一時刻觀測):日夜循環與昇落暫停;地平線仍是該時刻的真實地平',
     '* Diurnal motion frozen — like observing at the same clock time each day: day/night & risings pause; the horizon is still the true horizon for that instant'],
@@ -1475,6 +1493,7 @@ function applyLang(){
   [...rs.options].forEach(o=>{o.textContent=lang==='zh'?ELEM[+o.value].name:ELEM[+o.value].en;});
   setPlayLabel();
   try{ compassTitle(); }catch(e){}
+  try{ syncViewBodyChip(); }catch(e){}
   if(eclipseState)eclipseChip.textContent=ECL_STR[eclipseState][lang==='zh'?0:1];
   lunarCd=NaN; /* 重算農曆顯示語言 */
   relabelAll();
@@ -1581,6 +1600,29 @@ async function setCompass(on){
   }
 }
 compassBtn.addEventListener('click',()=>setCompass(!compassOn));
+
+/* ══ 地平視角左下角:觀察地(與左窗 viewBodySel 同一個真實狀態,點一下換下一顆) ══ */
+const viewBodyBtn=document.getElementById('viewBodyBtn');
+const viewBodyChip=document.getElementById('viewBodyChip');
+const VIEWBODY_ORDER=['earth','moon','mars','titan'];
+function syncViewBodyChip(){
+  const sel=document.getElementById('viewBodySel');
+  const i=VIEWBODY_ORDER.indexOf(sel.value);
+  const nm=(typeof VIEWBODY_STR!=='undefined'&&i>=0)?VIEWBODY_STR[i][lang==='zh'?0:1]:sel.value;
+  viewBodyChip.textContent=nm;
+  viewBodyBtn.title=T('觀察地:','Observer: ')+nm+T('(點一下換下一個)',' (click to switch)');
+}
+viewBodyBtn.addEventListener('click',()=>{
+  const sel=document.getElementById('viewBodySel');
+  const i=VIEWBODY_ORDER.indexOf(sel.value);
+  sel.value=VIEWBODY_ORDER[(i+1)%VIEWBODY_ORDER.length];
+  sel.dispatchEvent(new Event('change'));
+});
+
+/* ══ 隱藏按鈕:收掉地平視角下方所有控制(觀察地/指南針/視野),面板鈕縮成箭頭 ══ */
+document.getElementById('hideBtnChk').addEventListener('change',e=>{
+  document.getElementById('paneR').classList.toggle('btnHidden',e.target.checked);
+});
 function compassTitle(){
   compassBtn.title=T('指南針對準(手機:對準真實天空)','Compass aim (mobile: point at the real sky)');
 }
@@ -1646,7 +1688,7 @@ document.getElementById('scaleChk').addEventListener('change',e=>{
   trueScale=e.target.checked;
   applyScaleMode();                        /* 還原進入模式的視角(互不影響) */
 });
-document.getElementById('constChk').addEventListener('change',e=>constGroupR.visible=e.target.checked);
+constGroupR.visible=true;   /* 星座圖形已無開關,永遠顯示 */
 document.getElementById('bgStarChk').addEventListener('change',e=>starsR.visible=e.target.checked);
 /* 運動殘影選項:僅速度 ≥1 天/秒時顯示;開啟時強制並鎖定
    日夜背景=關、參考線=關、文字標籤=關、隱藏地平線=開(避免文字殘影) */
@@ -2288,7 +2330,7 @@ function navStep(){
   nav.key=nav.keys[nav.i];
   if(typeof nav.key==='string'&&nav.key.startsWith('c:')){   /* 星座站:確保左天球與兩側星座圖形可見,並點亮連線 */
     const nm=nav.key.slice(2);
-    const ids=['sphereChk','constChk']; if(EXTRA_CONST[nm])ids.push('extraConstChk');
+    const ids=['sphereChk']; if(EXTRA_CONST[nm])ids.push('extraConstChk');
     ids.forEach(id=>{const el=document.getElementById(id); if(el&&!el.checked){el.checked=true; el.dispatchEvent(new Event('change'));}});
     ensureExtraVisible(nm);
     highlightConst(nm);
@@ -2387,12 +2429,12 @@ function getKey(enc,lsKey,msg){
   return k;
 }
 const AI_IDS=['dt','speed','lat','lon','langSel','tidalChk','phaseChk','sphereChk','signChk','orbitChk',
- 'scaleChk','obsSel','retroSel','trailChk','trackSel','lockSel','constChk','eclLineChk','bgStarChk',
- 'dayChk','textChk','hideHorChk','invChk','trailFxChk','extraConstChk','extraLvlSel','viewBodySel',
+ 'scaleChk','obsSel','retroSel','trailChk','trackSel','lockSel','eclLineChk','bgStarChk',
+ 'dayChk','textChk','hideHorChk','hideBtnChk','invChk','trailFxChk','extraConstChk','extraLvlSel','viewBodySel',
  'playBtn','nowBtn','resetViewBtn','homeBtn','retroTableBtn','compassBtn'];
 const AI_SPEC=`Controls. set:{"type":"set","id":ID,"value":V}; click:{"type":"click","id":ID}.
 dt "YYYY-MM-DDTHH:MM"; speed 3600000|7200000|10800000|21600000|86400000|259200000|864000000|-86400000 (ms sim per s); lat -89.9..89.9; lon -180..180; langSel zh|en.
-Checkbox bool: tidalChk tidal, phaseChk moon-phase&shadows, sphereChk celestial-sphere, signChk zodiac-sectors, orbitChk orbits, scaleChk true-scale, trailChk retro-trail, constChk constellations, eclLineChk ref-lines, bgStarChk stars, dayChk day/night, textChk labels, hideHorChk hide-horizon, invChk invert-drag, trailFxChk motion-trails(only |speed|>=86400000).
+Checkbox bool: tidalChk tidal, phaseChk moon-phase&shadows, sphereChk celestial-sphere, signChk zodiac-sectors, orbitChk orbits, scaleChk true-scale, trailChk retro-trail, eclLineChk ref-lines, bgStarChk stars, dayChk day/night, textChk labels, hideHorChk hide-horizon, hideBtnChk hide the sky-pane bottom buttons, invChk invert-drag, trailFxChk motion-trails(only |speed|>=86400000).
 Select: viewBodySel earth|moon|mars|titan = WHERE the observer stands (sky pane is rendered from that world; changed in the LEFT pane); extraLvlSel min|mid|all = how many extra constellations (few / more / all 23, needs extraConstChk true); obsSel none|sun|p0..p8|moon (follow, true-scale only); retroSel 0|1|3|4|5|6|7|8 = Mercury..Pluto; trackSel off|ecl_e|ecl_w|lun_e|lun_w axis-lock; lockSel none|sun|moon|c:牡羊座|c:金牛座|c:雙子座|c:巨蟹座|c:獅子座|c:處女座|c:天秤座|c:天蠍座|c:射手座|c:摩羯座|c:水瓶座|c:雙魚座.
 Click: compassBtn toggle compass-aim (phone points at the real sky using its orientation sensor; mobile only, asks permission, cancelled by dragging), playBtn toggle-play, nowBtn now, resetViewBtn initial-view (reset BOTH panes to opening state: sky faces due east above horizon, heliocentric default framing; clears any follow/lock/tour), homeBtn reset-view, retroTableBtn retrograde-table.
 navigate/tour (camera fly — BOTH panes zoom smoothly): {"type":"navigate","target":BODY} single hop, or {"type":"tour","targets":[BODY,...]} multi-stop. BODY=sun|moon|mercury|venus|earth|mars|jupiter|saturn|uranus|neptune|pluto (Chinese names also accepted). Use for: go to / show me / fly to / navigate / 導覽 / tour from X to Y to Z. "outermost planet / 最外圍行星"=pluto, "innermost / 最內圍"=mercury, "nine planets / 九顆行星"=mercury..pluto in order. BODY may also be a CONSTELLATION name (zodiac or listed), e.g. 牡羊座/Aries, 獅子座/Leo, 天蠍座/Scorpius (zh or en) — constellations turn only the sky pane.`;
@@ -2552,7 +2594,7 @@ requestAnimationFrame(animate);
    ?dt=2026-08-16T21:30&lat=25.03&lon=121.56&lang=en
    &target=mars            單一天體/星座
    &tour=pluto,earth,mercury   多段導覽
-   &set=constChk:1,extraConstChk:1,scaleChk:0   任何白名單控制項
+   &set=sphereChk:1,extraConstChk:1,scaleChk:0   任何白名單控制項
    &click=playBtn          按鈕
    &fov=40                 地平視角視野角度(度)
    &compass=1              提示使用者開啟指南針對準(權限需手動點按) */

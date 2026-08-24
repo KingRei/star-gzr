@@ -44,8 +44,8 @@ const dRa = oc.centre_ra_deg_of_date - oc.centre_ra_deg_j2000;
 ok(dRa > 0.25 && dRa < 0.45, `歲差量合理 / precession ΔRA ${dRa.toFixed(3)}°`);
 
 /* 深連結 */
-const url = buildLink({ tour: ['mercury', 'mars'], datetime: '2026-08-16T21:30', language: 'zh', settings: { constChk: true }, fov: 60 });
-ok(url.includes('tour=mercury%2Cmars') && url.includes('set=constChk%3A1') && url.includes('fov=60'), '深連結參數齊全 / deep link params');
+const url = buildLink({ tour: ['mercury', 'mars'], datetime: '2026-08-16T21:30', language: 'zh', settings: { sphereChk: true }, fov: 60 });
+ok(url.includes('tour=mercury%2Cmars') && url.includes('set=sphereChk%3A1') && url.includes('fov=60'), '深連結參數齊全 / deep link params');
 ok(buildLink({ target: 'Orion' }).includes('target=Orion'), '單一目標用 target / single target');
 
 /* 每個工具都能被呼叫 */

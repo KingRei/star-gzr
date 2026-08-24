@@ -89,15 +89,21 @@ from that surface — sky colour, air, spin rate, and what hangs overhead all ch
 | <b style="color:#E0603C">火星 Mars</b> | 塵埃散射的橘紅天空 | 24h37m 自轉；地球退成一顆晨昏星，月球不再單獨可見 |
 | <b style="color:#E0B36A">泰坦 Titan</b> | 1.45 atm 甲烷霾，永恆昏橙、整體再暗一階 | 15.945 日潮汐鎖定；土星帶著環佔滿半邊天，可鎖定 |
 
-切換位置在**左側日心視角**面板的「觀察地」下拉選單（`viewBodySel`）。語音也行：說「站到泰坦上看」。
-Switch it from the **left, heliocentric pane** — the *Observer* dropdown (`viewBodySel`) — or just say
-*"stand on Titan"*.
+切換位置有兩個：**左側日心視角**面板的「觀察地」下拉選單（`viewBodySel`），以及**地平視角左下角**那顆地球圖示的圓鈕
+——點一下就換下一個觀察地，旁邊的小標籤會顯示現在站在哪。語音也行：說「站到泰坦上看」。
+Switch it either from the *Observer* dropdown in the **left, heliocentric pane** (`viewBodySel`), or with the
+round globe button at the **bottom-left of the sky pane** (click to cycle; the chip next to it shows where you
+stand) — or just say *"stand on Titan"*.
+
+地平視角面板裡的「隱藏按鈕」會把下方所有控制（觀察地、指南針、視野）一起收起來，面板鈕也縮成一個箭頭，
+留下乾淨的天空。The *Hide buttons* checkbox in the sky pane clears every bottom control and shrinks the panel
+toggle down to a single arrow.
 
 ---
 
 ## 指南針對準真實天空 / Compass aiming
 
-地平視角右下角、視野倍數左邊那顆**指南針＋望遠鏡**圖示，是給手機用的：
+地平視角右下角、視野倍數左邊那顆**指南針**圖示，是給手機用的：
 按下去之後，天空面板會跟著手機的方位感測器轉，你把手機舉向哪裡，畫面就看向哪裡 ——
 真的「舉起來對著天空找星星」。
 
@@ -147,7 +153,7 @@ The engine is extracted from the simulator itself, so the numbers an AI quotes m
 
 ```
 https://gazer.star-gzr.com/?dt=2026-08-16T21:30&lat=25.03&lon=121.56
-    &tour=mercury,venus,earth,mars&set=constChk:1&lang=zh
+    &tour=mercury,venus,earth,mars&set=sphereChk:1&lang=zh
 ```
 
 參數 / params：`dt` `lat` `lon` `lang` `speed` `target` `tour` `set` `click` `fov` `compass`。

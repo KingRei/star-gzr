@@ -58,7 +58,7 @@ const TOOLS = [
         datetime: timeArg, latitude: latArg, longitude: lonArg,
         language: S('介面語言 / UI language', { enum: ['zh', 'en'] }),
         speed: { type: 'number', description: '模擬速度(每真實秒的模擬毫秒),例如 86400000 = 一天/秒' },
-        settings: { type: 'object', description: '勾選項與下拉,例如 {"constChk":true,"lockSel":"c:獅子座"} / checkbox & select ids' },
+        settings: { type: 'object', description: '勾選項與下拉,例如 {"sphereChk":true,"lockSel":"c:獅子座"} / checkbox & select ids' },
         click: { type: 'array', items: { type: 'string' }, description: '要按的按鈕 id,例如 ["retroTableBtn"]' },
         fov: { type: 'number', description: '地平視角的視野角度 18–162 度 / horizon-pane field of view' },
         compass: { type: 'boolean', description: '提示使用者開啟指南針對準真實天空 / hint the user to enable compass aiming (mobile)' },

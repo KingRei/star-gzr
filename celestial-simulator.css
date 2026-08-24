@@ -137,6 +137,12 @@
     position:absolute;bottom:12px;right:12px;z-index:6;
     display:flex;align-items:center;gap:8px;
   }
+  /* 左下角的觀察地控制:與右下角同一套外觀,只是靠左 */
+  .skydock.skydockL{right:auto;left:12px;}
+  /* 隱藏按鈕:收掉地平視角下方全部控制,面板鈕只留一個箭頭 */
+  .pane.btnHidden .skydock{display:none;}
+  .pane.btnHidden .chip{font-size:0;letter-spacing:0;padding:4px 9px;}
+  .pane.btnHidden .chip::after{font-size:12px;opacity:.85;}
   .iconbtn{
     display:flex;align-items:center;justify-content:center;
     width:30px;height:30px;padding:0;cursor:pointer;
