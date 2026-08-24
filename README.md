@@ -217,6 +217,24 @@ Google Gemini（`GEMINI_API_KEY`）、DeepSeek（`DEEPSEEK_API_KEY`）。沒指�
 本機使用直接開 `index.html`；沒有代理時語音會改問你要不要自帶 API key。
 `/api/diag` 會告訴你目前選到哪家、金鑰有沒有設、上游回什麼狀態碼。
 
+### 唸出通知（TTS）/ Spoken notifications
+
+在 Worker 設 `TTS_PROVIDER` 才會啟用；沒設的話前端連「唸出通知」這個選項都不會出現
+（`GET /api/tts` 回 `enabled:false`）。有設之後，每一則跳出來的通知都會念一次，逆行、日月食、
+AI 回話都算。金鑰只在 Worker 端，瀏覽器拿到的只有音檔。
+
+| `TTS_PROVIDER` | Secret | 預設型號 / 聲音 | 中文 | 申請 |
+|---|---|---|---|---|
+| `openai` | `OPENAI_API_KEY` | `gpt-4o-mini-tts` / `alloy` | ✅ | platform.openai.com → API keys（用量計費，TTS 很便宜） |
+| `elevenlabs` | `ELEVENLABS_API_KEY` | `eleven_flash_v2_5` / Rachel | ✅ | elevenlabs.io → Profile → API Key（免費層每月約 1 萬字元） |
+| `groq` | `GROQ_API_KEY`（語音辨識已在用） | `playai-tts` / `Fritz-PlayAI` | ❌ 僅英文 | console.groq.com → API Keys（免費額度大） |
+
+想換聲音或型號設 `TTS_MODEL` / `TTS_VOICE`。要再加一家，就在 `worker.js` 的 `TTS_PROVIDERS`
+表多一列，只要寫得出 `build(cfg,text) → {url,headers,body}` 且回傳音檔就行。
+
+Set `TTS_PROVIDER` on the Worker to have every notification read aloud; leave it unset and the
+feature stays invisible. Keys live only in Worker Secrets.
+
 Deploy the root directory to any static host. The voice assistant proxies through the Worker: Groq
 Whisper for speech, and GitHub Models, Gemini or DeepSeek for the chat model (all OpenAI-compatible).
 Keep every key as a dashboard **Secret**, never in `wrangler.toml` or git; `/api/diag` reports which
