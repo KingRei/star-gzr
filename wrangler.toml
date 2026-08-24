@@ -28,8 +28,8 @@ USE_GATEWAY = "0"
 #   GEMINI_API_KEY  → Google Gemini  型號 GEMINI_MODEL  預設 gemini-2.0-flash
 #   DEEPSEEK_API_KEY→ DeepSeek       型號 DEEPSEEK_MODEL 預設 deepseek-chat
 # 沒指定時依 github → gemini → deepseek 的順序挑第一個有金鑰的;
-# 要明講就取消註解下面這行。
-# LLM_PROVIDER = "deepseek"
+# 要明講就改這一行(留在版控裡,才不會被下一次 wrangler deploy 洗掉)。
+LLM_PROVIDER = "deepseek"
 
 # ── 機密(Secret)絕對不要寫在這個檔案 ──
 # 儀表板：Workers & Pages → star-gzr → Settings → Variables and Secrets → Add，型別選 Secret

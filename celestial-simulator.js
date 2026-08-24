@@ -2408,11 +2408,26 @@ function decodeKey(b){ try{ return b? _xor(atob(b)) : ''; }catch(e){ return ''; 
    (如 'https://stargzr-ai.你的帳號.workers.dev'),經 Cloudflare AI Gateway
    集中管理金鑰、速率限制與用量分析。留空則直接使用本機金鑰模式。 */
 const AI_PROXY_BASE='/api';
-/* 代理失敗時把原因顯示出來,免得只看到「要 API Key」卻不知道哪裡壞掉 */
+/* 代理失敗時把原因顯示出來,免得只看到「要 API Key」卻不知道哪裡壞掉。
+   proxyLast 記下最後一次的狀態碼與上游訊息:代理「有回應但出錯」時就不該再去問
+   使用者要 GitHub Token(那是沒有代理時才有意義的退路),直接把真正的錯誤講出來。 */
+const proxyLast={asr:null,llm:null};
 async function proxyFail(tag,r){
-  let d=''; try{ d=(await r.clone().text()).slice(0,120); }catch(_){}
+  let d=''; try{ d=(await r.clone().text()).slice(0,200); }catch(_){}
   console.warn('[AI proxy] '+tag+' '+r.status+' '+r.url+' :: '+d);
+  proxyLast[tag.toLowerCase()]={status:r.status,detail:d};
   toast('! '+tag+' proxy '+r.status,false,true);
+}
+/* 代理確實回過話(不是 404 沒這個端點)就報錯不 prompt;回 true 代表已處理完畢 */
+function proxyBlocked(kind){
+  const p=proxyLast[kind];
+  if(!p||p.status===404)return false;
+  let why='';
+  try{ const j=JSON.parse(p.detail); why=(j.error&&(j.error.message||j.error))||j.message||''; }catch(_){ why=p.detail; }
+  why=String(why||'').slice(0,90);
+  console.warn('[AI proxy] '+kind+' blocked: '+p.status+' '+why);
+  toast(T('! 代理回 ','! Proxy ')+p.status+(why?' — '+why:'')+T('(看 /api/diag)',' (see /api/diag)'),false,true);
+  return true;
 }
 function proxyUrl(kind){
   if(!AI_PROXY_BASE)throw new Error('no proxy');
@@ -2495,12 +2510,14 @@ async function handleVoice(blob){
      使用者零設定);代理不存在或失效(404/500,例如你從後台移除金鑰)
      時,退回本機金鑰模式(prompt 一次、混淆存 localStorage)。 */
   let text='';
+  proxyLast.asr=null; proxyLast.llm=null;
   try{
     const r=await fetch(proxyUrl('asr'),
       {method:'POST',headers:{'Content-Type':blob.type||'audio/webm'},body:blob});
     if(!r.ok){ proxyFail('ASR',r); throw 0; }
     text=((await r.json()).text||'').trim();
   }catch(e){
+    if(proxyBlocked('asr'))return;
     const gk=getKey(GROQ_KEY_ENC,'tq_groq',T('輸入 Groq API Key(混淆後僅存本機)','Groq API key (obfuscated, stored locally)'));
     if(!gk){ toast(T('! ASR 代理與本機金鑰皆未設定','! No ASR proxy or local key'),false,true); return; }
     const fd=new FormData();
@@ -2523,12 +2540,14 @@ async function handleVoice(blob){
     if(!r.ok){ proxyFail('LLM',r); throw 0; }
     raw=await r.json();
   }catch(e){
+    if(proxyBlocked('llm'))return;
     const hk=getKey(GH_TOKEN_ENC,'tq_gh',T('輸入 GitHub Models Token(混淆後僅存本機)','GitHub Models token (obfuscated, stored locally)'));
     if(!hk){ toast(T('! LLM 代理與本機金鑰皆未設定','! No LLM proxy or local key'),false,true); return; }
-    const lr=await fetch('https://models.inference.ai.azure.com/chat/completions',{
+    /* 舊的 models.inference.ai.azure.com 已退場;這個端點的型號要帶 vendor 前綴 */
+    const lr=await fetch('https://models.github.ai/inference/chat/completions',{
       method:'POST',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+hk},
-      body:JSON.stringify(payload)});
+      body:JSON.stringify({...payload,model:'openai/gpt-4o-mini'})});
     if(!lr.ok)throw new Error('LLM '+lr.status);
     raw=await lr.json();
   }
