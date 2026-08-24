@@ -2277,14 +2277,18 @@ function constDirEcl(nm){
     const cc=new THREE.Vector3(); c.s.forEach(st=>cc.add(eqUnit(st[0]*DEG,st[1]*DEG))); u=cc.normalize(); }
   return eqToEclWorld(u.clone()).normalize();   /* 星座質心 → 日心世界方向 */
 }
-/* 回傳左窗(日心)目標鏡頭狀態:行星=移動樞紐點並拉近;星座=繞回原點並把該星座在天球上置中 */
+/* 回傳左窗(日心)目標鏡頭狀態:行星=移動樞紐點並拉近;星座=穿過太陽飛到它前方,朝外看那片天球
+   (樞紐點放在天球上的星座位置,鏡頭停在太陽與星座之間,太陽落在鏡頭背後;
+    若把樞紐點留在原點,畫面正中央會是太陽,看起來像在導覽太陽而不是星座) */
 function navL(key){
   if(typeof key==='string'&&key.startsWith('c:')){
     const g=constDirEcl(key.slice(2)); if(!g)return null;
     const Rw=SPHERE_R*(sphereGroup.scale.x||1);
     const phi=Math.max(0.05,Math.min(Math.PI-0.05,Math.acos(Math.max(-1,Math.min(1,-g.y)))));
     const theta=Math.atan2(-g.x,-g.z);
-    return {target:new THREE.Vector3(0,0,0),r:Math.max(ctrlL.min,Rw*0.72),theta,phi};
+    /* 鏡頭位置 = target - g*r,所以 r 取 0.55Rw 會停在 0.43Rw 處(太陽在身後) */
+    const r=Math.max(ctrlL.min,Math.min(ctrlL.max,Rw*0.55));
+    return {target:g.clone().multiplyScalar(Rw*0.98),r,theta,phi};
   }
   let pos,rad;
   if(key==='sun'){ pos=new THREE.Vector3(0,0,0); rad=5; }
