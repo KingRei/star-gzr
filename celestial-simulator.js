@@ -1283,24 +1283,75 @@ const retroState=new Array(ELEM.length).fill(null);
    時刻誤差可達 ~1 小時,邊緣性偏食判定僅供參考) */
 let eclipseState=null;
 const eclipseChip=document.getElementById('eclipseChip');
-function eclipseCheck(ms){
+/* 食的幾何量(時刻表與即時判定共用):角距、角半徑、地影半徑 */
+function eclipseGeom(ms){
   const T3=centuries(ms);
   const m=moonGeo(T3), su=geoEcl('sun',T3);
   const md=Math.hypot(m.x,m.y,m.z), sd=Math.hypot(su.x,su.y,su.z);
   const mh={x:m.x/md,y:m.y/md,z:m.z/md}, sh={x:su.x/sd,y:su.y/sd,z:su.z/sd};
   const dot=mh.x*sh.x+mh.y*sh.y+mh.z*sh.z;
   const distKm=m.distKm;
-  const rm=Math.atan(1737.4/distKm);              /* 月角半徑 */
+  const rm=Math.atan(1737.4/distKm);              /* 月角半徑(地心) */
+  const rmTop=Math.asin(1737.4/Math.max(1,distKm-6378)); /* 月角半徑(地表,判全/環食用) */
   const par=Math.asin(6378/distKm);               /* 月地平視差 */
+  const rs=0.00465/sd;                            /* 日角半徑(隨日距變化) */
+  const sigL=Math.acos(Math.max(-1,Math.min(1,-dot))); /* 月心↔反日點 */
+  const sigS=Math.acos(Math.max(-1,Math.min(1,dot)));  /* 月心↔日心 */
+  const u=1.02*(par-0.00465+0.0000426);           /* Danjon 地影半徑 */
+  return {rm,rmTop,par,rs,sigL,sigS,u,distKm};
+}
+function eclipseCheck(ms){
+  const g=eclipseGeom(ms);
   /* 月食:月心與反日點角距 vs 地影錐半徑(~4650km@月距) */
-  const sigL=Math.acos(Math.max(-1,Math.min(1,-dot)));
-  const u=1.02*(par-0.00465+0.0000426); /* Danjon 地影半徑 */
-  if(sigL<u-rm)return 'lunarT';
-  if(sigL<u+rm)return 'lunarP';
+  if(g.sigL<g.u-g.rm)return 'lunarT';
+  if(g.sigL<g.u+g.rm)return 'lunarP';
   /* 日食:日月角距 < 月半徑+日半徑+視差 → 地表某處可見 */
-  const sigS=Math.acos(Math.max(-1,Math.min(1,dot)));
-  if(sigS<rm+0.00465+par)return 'solar';
+  if(g.sigS<g.rm+g.rs+g.par)return 'solar';
   return null;
+}
+/* ── 一整年的日月食:20 分鐘掃描找出食窗,再二分逼近到分鐘 ──
+   只判「全球某處看得到」,不做地方可見性;半影月食不列(本影判定)。
+   位置用的是站內同一套簡化日月理論,所以時刻是估計值(見表下註記)。 */
+function eclipseKind(ms){
+  const g=eclipseGeom(ms);
+  if(g.sigL<g.u+g.rm)return 'lunar';
+  if(g.sigS<g.rm+g.rs+g.par)return 'solar';
+  return null;
+}
+function eclipseEdge(outMs,inMs,kind){        /* out=食外,in=食內 */
+  for(let i=0;i<22;i++){ const mid=(outMs+inMs)/2;
+    if(eclipseKind(mid)===kind)inMs=mid; else outMs=mid; }
+  return Math.round(inMs/60000)*60000;
+}
+function eclipseEvents(year){
+  const t0=Date.UTC(year,0,1), t1=Date.UTC(year+1,0,1), STEP=20*60000;
+  const out=[]; let cur=null, prevMs=t0;
+  for(let ms=t0;ms<=t1;ms+=STEP){
+    const k=eclipseKind(ms);
+    if(k&&!cur)cur={kind:k,sLo:prevMs,sHi:ms,peak:ms,best:Infinity};
+    if(cur){
+      const g=eclipseGeom(ms), sig=(cur.kind==='lunar')?g.sigL:g.sigS;
+      if(sig<cur.best){cur.best=sig;cur.peak=ms;}
+      if(!k){ cur.start=eclipseEdge(cur.sLo,cur.sHi,cur.kind);
+              cur.end=eclipseEdge(ms,prevMs,cur.kind);
+              out.push(cur); cur=null; }
+    }
+    prevMs=ms;
+  }
+  if(cur){ cur.start=eclipseEdge(cur.sLo,cur.sHi,cur.kind); cur.end=t1; out.push(cur); }
+  /* 食甚時刻附近再細查一次(20 分鐘網格對「食甚」太粗) */
+  for(const e of out){
+    let best=e.best, pk=e.peak;
+    for(let ms=e.peak-20*60000;ms<=e.peak+20*60000;ms+=60000){
+      const g=eclipseGeom(ms), sig=(e.kind==='lunar')?g.sigL:g.sigS;
+      if(sig<best){best=sig;pk=ms;}
+    }
+    e.peak=pk;
+    const g=eclipseGeom(pk);
+    if(e.kind==='lunar') e.type=(g.sigL<g.u-g.rm)?'lunarT':'lunarP';
+    else e.type=(g.sigS<g.par)?(g.rmTop>g.rs?'solarT':'solarA'):'solarP';
+  }
+  return out;
 }
 const ECL_STR={
   lunarT:['月全食進行中(血月)','Total lunar eclipse (blood moon)'],
@@ -1373,10 +1424,52 @@ function retroIntervals(year){
 const modalBg=document.getElementById('modalBg');
 const yLbl=document.getElementById('yLbl');
 const rowsEl=document.getElementById('retroRows');
+const tblNote=document.getElementById('tblNote');
 let tableYear=new Date().getFullYear();
+let tableTab='retro';                      /* retro | ecl */
+function fmtDateTime(ms){const d=new Date(ms);
+  return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;}
+const ECL_TYPE={
+  lunarT:['月全食','Total lunar'], lunarP:['月偏食','Partial lunar'],
+  solarT:['日全食','Total solar'], solarA:['日環食','Annular solar'], solarP:['日偏食','Partial solar']
+};
+/* 表頭文字隨分頁換;th 的 id 在 UI_STR 裡也有,所以這裡要在 applyLang 之後再蓋一次 */
+const TH_STR={
+  retro:[['行星','Planet'],['開始逆行','Retrograde begins'],['恢復順行','Direct again'],['期間','Duration']],
+  ecl:[['類型','Type'],['開始','Begins'],['食甚','Greatest'],['結束','Ends']]
+};
+function renderTable(){
+  const k=lang==='zh'?0:1;
+  document.getElementById('tabRetro').classList.toggle('on',tableTab==='retro');
+  document.getElementById('tabEcl').classList.toggle('on',tableTab==='ecl');
+  ['thP','thS','thE','thD'].forEach((id,i)=>{
+    const el=document.getElementById(id); if(el)el.textContent=TH_STR[tableTab][i][k];
+  });
+  if(tableTab==='ecl')renderEclTable(); else renderRetroTable();
+}
+function renderEclTable(){
+  yLbl.textContent=tableYear;
+  rowsEl.innerHTML='';
+  tblNote.innerHTML=T(
+    '＊ 只列全球某處看得到的日食與本影月食(不含半影月食);時刻為本機時區。<br>＊ 日月位置用的是站內同一套簡化理論,時刻約有 ±1 小時的誤差,全食/環食/偏食的判別在臨界個案也可能不準——查精確資料請以 NASA 的 eclipse 目錄為準。',
+    '* Solar eclipses visible somewhere on Earth, plus umbral lunar eclipses (penumbral ones are omitted); times in your local zone.<br>* Positions come from the same simplified theory the rest of the site uses, so times can be off by up to ~1 hour and total/annular/partial calls may be wrong in marginal cases — check NASA\'s eclipse catalog for authoritative data.');
+  const evs=eclipseEvents(tableYear);
+  if(!evs.length){
+    rowsEl.insertAdjacentHTML('beforeend',
+      `<tr class="none"><td colspan="4">${T('本年無日月食','No eclipses this year')}</td></tr>`);
+    return;
+  }
+  for(const e of evs){
+    const ty=ECL_TYPE[e.type]||ECL_TYPE.solarP;
+    rowsEl.insertAdjacentHTML('beforeend',
+      `<tr><td class="pname">${ty[lang==='zh'?0:1]}</td><td>${fmtDateTime(e.start)}</td>`+
+      `<td>${fmtDateTime(e.peak)}</td><td>${fmtDateTime(e.end)}</td></tr>`);
+  }
+}
 function renderRetroTable(){
   yLbl.textContent=tableYear;
   rowsEl.innerHTML='';
+  tblNote.textContent='';
   const data=retroIntervals(tableYear);
   for(const rec of data){
     const name=pname(rec.i);
@@ -1396,13 +1489,15 @@ function renderRetroTable(){
 }
 document.getElementById('retroTableBtn').addEventListener('click',()=>{
   tableYear=new Date(simMs).getFullYear();
-  renderRetroTable();
+  renderTable();
   modalBg.classList.add('open');
 });
+document.getElementById('tabRetro').addEventListener('click',()=>{tableTab='retro';renderTable();});
+document.getElementById('tabEcl').addEventListener('click',()=>{tableTab='ecl';renderTable();});
 document.getElementById('mClose').addEventListener('click',()=>modalBg.classList.remove('open'));
 modalBg.addEventListener('click',e=>{if(e.target===modalBg)modalBg.classList.remove('open');});
-document.getElementById('yPrev').addEventListener('click',()=>{tableYear--;renderRetroTable();});
-document.getElementById('yNext').addEventListener('click',()=>{tableYear++;renderRetroTable();});
+document.getElementById('yPrev').addEventListener('click',()=>{tableYear--;renderTable();});
+document.getElementById('yNext').addEventListener('click',()=>{tableYear++;renderTable();});
 
 /* ══════════════════════════════════════════════════════════
    7. 語系切換
@@ -1411,7 +1506,9 @@ const UI_STR={
   uiTime:['時刻','Time'], uiSpeed:['速度','Speed'], uiLat:['緯度','Lat'], uiLon:['經度','Lon'],
   nowBtn:['切現在','Jump now'],
   resetViewBtn:['回初始位','Initial view'],
-  retroTableBtn:['逆行時刻表','Retrograde Table'],
+  retroTableBtn:['時刻表','Almanac'],
+  tabRetro:['行星逆行','Retrogrades'],
+  tabEcl:['日月食','Eclipses'],
   chipL:['日心視角 · SOLAR SYSTEM','HELIOCENTRIC · SOLAR SYSTEM'],
   chipR:['地平視角 · SKY VIEW','HORIZON · SKY VIEW'],
   uiTidal:['月球潮汐力示意','Lunar tidal forces'],
@@ -1443,7 +1540,7 @@ const UI_STR={
   uiFootTime:['模擬時刻','Sim time'], uiFootLoc:['觀測地','Observer'],
   uiHint:['拖曳旋轉 · 滾輪/雙指縮放 · 逆行軌跡:實線=過去 虛線=未來',
           'Drag to rotate · wheel / pinch to zoom · trail: solid = past, dashed = future'],
-  uiModalTitle:['行星逆行時刻表','Planetary Retrogrades'],
+  uiModalTitle:['時刻表','Almanac'],
   thP:['行星','Planet'], thS:['開始逆行','Starts'], thE:['恢復順行','Ends'], thD:['期間','Duration']
 };
 const TRACK_STR=[['無置中','No axis'],['黃道軸・日出','Ecliptic · Sunrise'],['黃道軸・日沒','Ecliptic · Sunset'],
@@ -1497,7 +1594,7 @@ function applyLang(){
   if(eclipseState)eclipseChip.textContent=ECL_STR[eclipseState][lang==='zh'?0:1];
   lunarCd=NaN; /* 重算農曆顯示語言 */
   relabelAll();
-  if(modalBg.classList.contains('open'))renderRetroTable();
+  if(modalBg.classList.contains('open'))renderTable();
 }
 document.getElementById('langSel').addEventListener('change',e=>{
   lang=e.target.value;
@@ -2455,7 +2552,7 @@ const AI_SPEC=`Controls. set:{"type":"set","id":ID,"value":V}; click:{"type":"cl
 dt "YYYY-MM-DDTHH:MM"; speed 3600000|7200000|10800000|21600000|86400000|259200000|864000000|-86400000 (ms sim per s); lat -89.9..89.9; lon -180..180; langSel zh|en.
 Checkbox bool: tidalChk tidal, phaseChk moon-phase&shadows, sphereChk celestial-sphere, signChk zodiac-sectors, orbitChk orbits, scaleChk true-scale, trailChk retro-trail, eclLineChk ref-lines, bgStarChk stars, dayChk day/night, textChk labels, hideHorChk hide-horizon, hideBtnChk hide the sky-pane bottom buttons, invChk invert-drag, trailFxChk motion-trails(only |speed|>=86400000).
 Select: viewBodySel earth|moon|mars|titan = WHERE the observer stands (sky pane is rendered from that world; changed in the LEFT pane); extraLvlSel min|mid|all = how many extra constellations (few / more / all 23, needs extraConstChk true); obsSel none|sun|p0..p8|moon (follow, true-scale only); retroSel 0|1|3|4|5|6|7|8 = Mercury..Pluto; trackSel off|ecl_e|ecl_w|lun_e|lun_w axis-lock; lockSel none|sun|moon|c:牡羊座|c:金牛座|c:雙子座|c:巨蟹座|c:獅子座|c:處女座|c:天秤座|c:天蠍座|c:射手座|c:摩羯座|c:水瓶座|c:雙魚座.
-Click: compassBtn toggle compass-aim (phone points at the real sky using its orientation sensor; mobile only, asks permission, cancelled by dragging), playBtn toggle-play, nowBtn now, resetViewBtn initial-view (reset BOTH panes to opening state: sky faces due east above horizon, heliocentric default framing; clears any follow/lock/tour), homeBtn reset-view, retroTableBtn retrograde-table.
+Click: compassBtn toggle compass-aim (phone points at the real sky using its orientation sensor; mobile only, asks permission, cancelled by dragging), playBtn toggle-play, nowBtn now, resetViewBtn initial-view (reset BOTH panes to opening state: sky faces due east above horizon, heliocentric default framing; clears any follow/lock/tour), homeBtn reset-view, retroTableBtn almanac table (retrograde + eclipse tabs).
 navigate/tour (camera fly — BOTH panes zoom smoothly): {"type":"navigate","target":BODY} single hop, or {"type":"tour","targets":[BODY,...]} multi-stop. BODY=sun|moon|mercury|venus|earth|mars|jupiter|saturn|uranus|neptune|pluto (Chinese names also accepted). Use for: go to / show me / fly to / navigate / 導覽 / tour from X to Y to Z. "outermost planet / 最外圍行星"=pluto, "innermost / 最內圍"=mercury, "nine planets / 九顆行星"=mercury..pluto in order. BODY may also be a CONSTELLATION name (zodiac or listed), e.g. 牡羊座/Aries, 獅子座/Leo, 天蠍座/Scorpius (zh or en) — constellations turn only the sky pane.`;
 const AI_SYS='You operate a celestial simulator and answer astronomy questions ONLY. '+
  'Refuse anything unrelated to astronomy or simulator control (no actions, brief polite reply). '+
