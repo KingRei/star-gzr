@@ -4,7 +4,6 @@
  * 瀏覽器 → 這個 Worker
  *   /api/asr → Groq Whisper（可選擇經 AI Gateway）
  *   /api/llm → GitHub Models / Gemini / DeepSeek 擇一（都是 OpenAI 相容格式）
- *   /api/tts → OpenAI / Groq / ElevenLabs 擇一（要設 TTS_PROVIDER 才啟用；GET 問狀態、POST 拿音檔）
  *   /api/diag          → 診斷：看得到哪些變數、上游回什麼
  *   其他所有路徑        → env.ASSETS（index.html / css / js / favicon…）
  *
@@ -68,64 +67,6 @@ const LLM_PROVIDERS = {
 };
 /* 沒指定時的挑選順序:誰的金鑰有設就用誰 */
 const LLM_ORDER = ['github', 'gemini', 'deepseek'];
-
-/**
- * 語音朗讀(TTS)。刻意「不自動啟用」:一定要設變數 TTS_PROVIDER 才會開,
- * 否則 GROQ_API_KEY 早就為了 Whisper 而存在,會不小心把只講英文的 playai-tts 打開。
- *   TTS_PROVIDER = openai | groq | elevenlabs
- *   對應金鑰      = OPENAI_API_KEY / GROQ_API_KEY / ELEVENLABS_API_KEY (存成 Secret)
- *   可選覆寫      = TTS_MODEL / TTS_VOICE
- * 前端 GET /api/tts 問「開了沒」,POST /api/tts {text} 拿回一段 audio。
- */
-const TTS_PROVIDERS = {
-  openai: {
-    keyName: 'OPENAI_API_KEY',
-    defModel: 'gpt-4o-mini-tts',
-    defVoice: 'alloy',
-    zh: true,                      // 中文念得出來
-    build: (cfg, text) => ({
-      url: (cfg.base || 'https://api.openai.com/v1') + '/audio/speech',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
-      body: JSON.stringify({ model: cfg.model, voice: cfg.voice, input: text, response_format: 'mp3' }),
-    }),
-  },
-  groq: {
-    keyName: 'GROQ_API_KEY',
-    defModel: 'playai-tts',
-    defVoice: 'Fritz-PlayAI',
-    zh: false,                     // playai-tts 目前只有英文/阿拉伯文
-    build: (cfg, text) => ({
-      url: (cfg.base || 'https://api.groq.com/openai/v1') + '/audio/speech',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
-      body: JSON.stringify({ model: cfg.model, voice: cfg.voice, input: text, response_format: 'wav' }),
-    }),
-  },
-  elevenlabs: {
-    keyName: 'ELEVENLABS_API_KEY',
-    defModel: 'eleven_flash_v2_5', // 多語(含中文)、延遲低
-    defVoice: '21m00Tcm4TlvDq8ikWAM', // Rachel,公用預設聲音
-    zh: true,
-    build: (cfg, text) => ({
-      url: `https://api.elevenlabs.io/v1/text-to-speech/${cfg.voice}?output_format=mp3_44100_128`,
-      headers: { 'Content-Type': 'application/json', 'xi-api-key': cfg.key },
-      body: JSON.stringify({ text, model_id: cfg.model }),
-    }),
-  },
-};
-function ttsCfg(env) {
-  const name = String(env.TTS_PROVIDER || '').toLowerCase();
-  const P = TTS_PROVIDERS[name];
-  if (!P) return { enabled: false, reason: env.TTS_PROVIDER ? 'unknown TTS_PROVIDER' : 'TTS_PROVIDER not set' };
-  const key = env[P.keyName];
-  if (!key) return { enabled: false, provider: name, reason: `${P.keyName} not set` };
-  return {
-    enabled: true, provider: name, P, key,
-    base: env.TTS_BASE || '',
-    model: env.TTS_MODEL || P.defModel,
-    voice: env.TTS_VOICE || P.defVoice,
-    zh: !!P.zh,
-  };
-}
 
 /**
  * 決定這次要用哪家。LLM_PROVIDER=github|gemini|deepseek 明講最優先;
@@ -195,13 +136,7 @@ export default {
           GH_MODELS_TOKEN: has('GH_MODELS_TOKEN'),
           GEMINI_API_KEY: has('GEMINI_API_KEY'),
           DEEPSEEK_API_KEY: has('DEEPSEEK_API_KEY'),
-          TTS_PROVIDER: env.TTS_PROVIDER || '(unset → TTS off)',
-          OPENAI_API_KEY: has('OPENAI_API_KEY'),
-          ELEVENLABS_API_KEY: has('ELEVENLABS_API_KEY'),
         },
-        tts: (() => { const t = ttsCfg(env);
-          return { enabled: t.enabled, provider: t.provider || null, model: t.model || null,
-                   voice: t.voice || null, zh: !!t.zh, reason: t.reason || null }; })(),
         probes: {},
       };
       // 對兩個上游各打一發最便宜的請求，把真實狀態碼帶回來
@@ -225,14 +160,6 @@ export default {
       return new Response(JSON.stringify(out, null, 2), {
         headers: { ...cors, 'content-type': 'application/json; charset=utf-8' },
       });
-    }
-
-    // ── 前端開場問一次:朗讀有沒有開、講不講中文 ──
-    if (url.pathname === '/api/tts' && req.method === 'GET') {
-      const t = ttsCfg(env);
-      return new Response(JSON.stringify({
-        enabled: t.enabled, provider: t.provider || null, zh: !!t.zh, reason: t.reason || null,
-      }), { headers: { ...cors, 'content-type': 'application/json' } });
     }
 
     if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: cors });
@@ -290,33 +217,6 @@ export default {
         return new Response(await r.text(), {
           status: r.status,
           headers: { ...cors, 'content-type': 'application/json' },
-        });
-      }
-
-      // ── 文字轉語音:把通知念出來 ──
-      if (url.pathname === '/api/tts') {
-        const t = ttsCfg(env);
-        if (!t.enabled) {
-          return new Response(JSON.stringify({ error: t.reason }), { status: 503, headers: cors });
-        }
-        let text = '';
-        try { text = String((JSON.parse(await req.text()) || {}).text || ''); } catch (_) {}
-        text = text.trim().slice(0, 600);       // 通知很短,順手擋掉濫用
-        if (!text) return new Response(JSON.stringify({ error: 'empty text' }), { status: 400, headers: cors });
-
-        const q = t.P.build(t, text);
-        const r = await fetch(q.url, { method: 'POST', headers: q.headers, body: q.body });
-        if (!r.ok) {
-          return new Response(JSON.stringify({ error: (await r.text()).slice(0, 300) }),
-            { status: r.status, headers: { ...cors, 'content-type': 'application/json' } });
-        }
-        return new Response(r.body, {
-          status: 200,
-          headers: {
-            ...cors,
-            'content-type': r.headers.get('content-type') || 'audio/mpeg',
-            'cache-control': 'no-store',
-          },
         });
       }
 

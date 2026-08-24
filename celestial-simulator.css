@@ -144,9 +144,7 @@
   /* 左下角的觀察地控制:與右下角同一套外觀,只是靠左 */
   .skydock.skydockL{right:auto;left:12px;--vb:#6FC3D6;}
   /* 觀察地配色:--vb 由 JS 依星球設定(地球藍/月球白/火星紅/泰坦土黃) */
-  .skydockL .iconbtn{color:var(--vb);width:auto;gap:5px;padding:0 10px;border-radius:999px;}
-  /* 圖示旁邊固定寫「觀察地」,是哪一顆寫在右邊那個名牌上 */
-  #viewBodyLbl{font-size:11px;letter-spacing:.08em;white-space:nowrap;}
+  .skydockL .iconbtn{color:var(--vb);}
   .skydockL .iconbtn:hover{border-color:var(--vb);}
   .skydockL .zoomchip{color:var(--vb);}
   /* 指南針在非地球觀察地上停用:仍可點,但按了只會說明原因 */
