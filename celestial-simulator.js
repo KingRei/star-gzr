@@ -1662,7 +1662,7 @@ async function setCompass(on){
     if(!compassAllowed()){
       const i=VIEWBODY_ORDER.indexOf(viewBody);
       const nm=(i>=0?VIEWBODY_STR[i][lang==='zh'?0:1]:viewBody);
-      toast(T('指南針不能在'+nm+'上使用','No compass on '+nm),false,true);
+      toast(T(nm+'沒有指南針,請在地球上使用','No compass on '+nm+' — use it on Earth'),false,true);
       return;
     }
     if(typeof DeviceOrientationEvent==='undefined'){
@@ -1717,7 +1717,9 @@ function syncViewBodyChip(){
   const sel=document.getElementById('viewBodySel');
   const i=VIEWBODY_ORDER.indexOf(sel.value);
   const nm=(typeof VIEWBODY_STR!=='undefined'&&i>=0)?VIEWBODY_STR[i][lang==='zh'?0:1]:sel.value;
-  viewBodyChip.textContent=T('觀察地','Observer');   /* 名牌只寫「觀察地」,是哪一顆由顏色表示 */
+  const lbl=document.getElementById('viewBodyLbl');
+  if(lbl)lbl.textContent=T('觀察地','Observer');   /* 圖示旁的固定字樣 */
+  viewBodyChip.textContent=nm;                     /* 右邊名牌寫星球名,顏色也跟著換 */
   viewBodyBtn.title=T('觀察地:','Observer: ')+nm+T('(點一下換下一個)',' (click to switch)');
   const dock=viewBodyBtn.parentElement;
   if(dock)dock.style.setProperty('--vb',VIEWBODY_COLOR[sel.value]||'#6FC3D6');
