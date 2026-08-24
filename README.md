@@ -92,8 +92,9 @@ from that surface — sky colour, air, spin rate, and what hangs overhead all ch
 切換位置有兩個：**左側日心視角**面板的「觀察地」下拉選單（`viewBodySel`），以及**地平視角左下角**那顆地球圖示的圓鈕
 ——點一下就換下一個觀察地，旁邊的小標籤會顯示現在站在哪。語音也行：說「站到泰坦上看」。
 Switch it either from the *Observer* dropdown in the **left, heliocentric pane** (`viewBodySel`), or with the
-round globe button at the **bottom-left of the sky pane** (click to cycle; the chip next to it shows where you
-stand) — or just say *"stand on Titan"*.
+round globe button at the **bottom-left of the sky pane** (click to cycle; the chip next to it reads
+「觀察地：地球」and both the icon and the chip take that world's colour — 地球藍、月球白、火星紅、泰坦土黃)
+— or just say *"stand on Titan"*.
 
 地平視角面板裡的「隱藏按鈕」會把下方所有控制（觀察地、指南針、視野）一起收起來，面板鈕也縮成一個箭頭，
 留下乾淨的天空。The *Hide buttons* checkbox in the sky pane clears every bottom control and shrinks the panel
@@ -126,6 +127,10 @@ you point at, that's what you see. Hold it up at the real sky and the labels lin
 - 一拖曳畫面就自動關閉，回到手動視角；按 `重設視角` 也會關閉。
   Dragging the sky cancels it and returns to manual look; resetting the view also turns it off.
 - AI 也能開關它：說「打開指南針」即可（`compassBtn` 已在 AI 白名單內）。
+- **只有地球能用。** 觀察地切到月球／火星／泰坦時指南針會變灰，點下去（或叫 AI 開）只會跳出說明：
+  別的星球沒有地磁，手機的方位角也對不上那顆星球的天球。切回地球就恢復。
+  Compass aim is Earth-only; on any other observer world the button greys out and explains why.
+
   The AI can toggle it too — say *"turn on the compass"*.
 
 ---

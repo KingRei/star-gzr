@@ -142,7 +142,14 @@
     display:flex;align-items:center;gap:8px;
   }
   /* 左下角的觀察地控制:與右下角同一套外觀,只是靠左 */
-  .skydock.skydockL{right:auto;left:12px;}
+  .skydock.skydockL{right:auto;left:12px;--vb:#6FC3D6;}
+  /* 觀察地配色:--vb 由 JS 依星球設定(地球藍/月球白/火星紅/泰坦土黃) */
+  .skydockL .iconbtn{color:var(--vb);}
+  .skydockL .iconbtn:hover{border-color:var(--vb);}
+  .skydockL .zoomchip{color:var(--vb);}
+  /* 指南針在非地球觀察地上停用:仍可點,但按了只會說明原因 */
+  .iconbtn.disabled{opacity:.42;}
+  .iconbtn.disabled:hover{border-color:var(--line);}
   /* 隱藏按鈕:收掉地平視角下方全部控制,面板鈕只留一個箭頭 */
   .pane.btnHidden .skydock{display:none;}
   .pane.btnHidden .chip{font-size:0;letter-spacing:0;padding:4px 9px;}

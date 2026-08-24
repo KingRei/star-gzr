@@ -1657,6 +1657,13 @@ async function setCompass(on){
   if(compassBusy)return; 
   if(!!on===compassOn)return;
   if(on){
+    if(!compassAllowed()){
+      const i=VIEWBODY_ORDER.indexOf(viewBody);
+      const nm=(i>=0?VIEWBODY_STR[i][lang==='zh'?0:1]:viewBody);
+      toast(T('指南針只能在地球上使用(目前觀察地:'+nm+')。請先把觀察地切回地球。',
+              'Compass aim only works on Earth (observer is currently '+nm+'). Switch the observer world back to Earth first.'),false,true);
+      return;
+    }
     if(typeof DeviceOrientationEvent==='undefined'){
       toast(T('這個瀏覽器沒有方位感測器','No orientation sensor in this browser'),false,true); return; }
     if(!window.isSecureContext){
@@ -1703,12 +1710,26 @@ compassBtn.addEventListener('click',()=>setCompass(!compassOn));
 const viewBodyBtn=document.getElementById('viewBodyBtn');
 const viewBodyChip=document.getElementById('viewBodyChip');
 const VIEWBODY_ORDER=['earth','moon','mars','titan'];
+/* 每個觀察地一個顏色:地球藍、月球白、火星紅、泰坦土黃,圖示與名牌同時上色 */
+const VIEWBODY_COLOR={earth:'#4F8FE6',moon:'#E8ECF5',mars:'#E0714F',titan:'#E3B34C'};
 function syncViewBodyChip(){
   const sel=document.getElementById('viewBodySel');
   const i=VIEWBODY_ORDER.indexOf(sel.value);
   const nm=(typeof VIEWBODY_STR!=='undefined'&&i>=0)?VIEWBODY_STR[i][lang==='zh'?0:1]:sel.value;
-  viewBodyChip.textContent=nm;
+  viewBodyChip.textContent=T('觀察地:','Observer: ')+nm;
   viewBodyBtn.title=T('觀察地:','Observer: ')+nm+T('(點一下換下一個)',' (click to switch)');
+  const dock=viewBodyBtn.parentElement;
+  if(dock)dock.style.setProperty('--vb',VIEWBODY_COLOR[sel.value]||'#6FC3D6');
+  try{ syncCompassAvail(); }catch(_){}   /* compassBtn 宣告在後面,首次呼叫時略過 */
+}
+/* 指南針只在地球有意義:別的星球沒有地磁,手機的方位角也對不上那顆星球的天球 */
+function compassAllowed(){ return viewBody==='earth'; }
+function syncCompassAvail(){
+  const ok=compassAllowed();
+  compassBtn.classList.toggle('disabled',!ok);
+  compassBtn.setAttribute('aria-disabled',ok?'false':'true');
+  if(!ok&&compassOn)setCompass(false);
+  compassTitle();
 }
 viewBodyBtn.addEventListener('click',()=>{
   const sel=document.getElementById('viewBodySel');
@@ -1722,9 +1743,12 @@ document.getElementById('hideBtnChk').addEventListener('change',e=>{
   document.getElementById('paneR').classList.toggle('btnHidden',e.target.checked);
 });
 function compassTitle(){
-  compassBtn.title=T('指南針對準(手機:對準真實天空)','Compass aim (mobile: point at the real sky)');
+  compassBtn.title=compassAllowed()
+    ?T('指南針對準(手機:對準真實天空)','Compass aim (mobile: point at the real sky)')
+    :T('指南針只能在地球上使用','Compass aim only works on Earth');
 }
 compassTitle();
+syncCompassAvail();   /* compassBtn 已就緒,補做一次(前面 syncViewBodyChip 呼叫時它還沒宣告) */
 
 function pad(n){return String(n).padStart(2,'0');}
 function setDtInput(ms){
@@ -2585,7 +2609,7 @@ const AI_SPEC=`Controls. set:{"type":"set","id":ID,"value":V}; click:{"type":"cl
 dt "YYYY-MM-DDTHH:MM"; speed 3600000|7200000|10800000|21600000|86400000|259200000|864000000|-86400000 (ms sim per s); lat -89.9..89.9; lon -180..180; langSel zh|en.
 Checkbox bool: tidalChk tidal, phaseChk moon-phase&shadows, sphereChk celestial-sphere, signChk zodiac-sectors, orbitChk orbits, scaleChk true-scale, trailChk retro-trail, eclLineChk ref-lines, bgStarChk stars, dayChk day/night, textChk labels, hideHorChk hide-horizon, hideBtnChk hide the sky-pane bottom buttons, invChk invert-drag, trailFxChk motion-trails(only |speed|>=86400000).
 Select: viewBodySel earth|moon|mars|titan = WHERE the observer stands (sky pane is rendered from that world; changed in the LEFT pane); extraLvlSel min|mid|all = how many extra constellations (few / more / all 23, needs extraConstChk true); obsSel none|sun|p0..p8|moon (follow, true-scale only); retroSel 0|1|3|4|5|6|7|8 = Mercury..Pluto; trackSel off|ecl_e|ecl_w|lun_e|lun_w axis-lock; lockSel (locking a c:… constellation ALSO flies the left pane through the Sun to it and lights up its lines) none|sun|moon|c:牡羊座|c:金牛座|c:雙子座|c:巨蟹座|c:獅子座|c:處女座|c:天秤座|c:天蠍座|c:射手座|c:摩羯座|c:水瓶座|c:雙魚座.
-Click: compassBtn toggle compass-aim (phone points at the real sky using its orientation sensor; mobile only, asks permission, cancelled by dragging), playBtn toggle-play, nowBtn now, resetViewBtn initial-view (reset BOTH panes to opening state: sky faces due east above horizon, heliocentric default framing; clears any follow/lock/tour), homeBtn reset-view, retroTableBtn almanac table (retrograde + eclipse tabs), paneModeBtn cycles the panes both → heliocentric only → sky only (click 1x/2x/3x to reach the one you want; "hide the sky pane"=1 click from both).
+Click: compassBtn toggle compass-aim (phone points at the real sky using its orientation sensor; mobile only, asks permission, cancelled by dragging; EARTH ONLY — if viewBodySel is not earth the app refuses and explains, so switch viewBodySel to earth first when the user asks for the compass), playBtn toggle-play, nowBtn now, resetViewBtn initial-view (reset BOTH panes to opening state: sky faces due east above horizon, heliocentric default framing; clears any follow/lock/tour), homeBtn reset-view, retroTableBtn almanac table (retrograde + eclipse tabs), paneModeBtn cycles the panes both → heliocentric only → sky only (click 1x/2x/3x to reach the one you want; "hide the sky pane"=1 click from both).
 navigate/tour (camera fly — BOTH panes zoom smoothly): {"type":"navigate","target":BODY} single hop, or {"type":"tour","targets":[BODY,...]} multi-stop. BODY=sun|moon|mercury|venus|earth|mars|jupiter|saturn|uranus|neptune|pluto (Chinese names also accepted). Use for: go to / show me / fly to / navigate / 導覽 / tour from X to Y to Z. "outermost planet / 最外圍行星"=pluto, "innermost / 最內圍"=mercury, "nine planets / 九顆行星"=mercury..pluto in order. BODY may also be a CONSTELLATION name (zodiac or listed), e.g. 牡羊座/Aries, 獅子座/Leo, 天蠍座/Scorpius (zh or en) — a constellation stop turns the sky pane AND flies the heliocentric pane out through the Sun so the constellation itself fills the view, with its lines lit.
 "Where is <constellation>? / X 在哪(裡)?" is a SHOW request: always emit {"type":"navigate","target":X} (optionally also set lockSel to c:X to keep it centred) — never answer with words only.`;
 const AI_SYS='You operate a celestial simulator and answer astronomy questions ONLY. '+
