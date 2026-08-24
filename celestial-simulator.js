@@ -2588,9 +2588,13 @@ function speak(text){
   ttsQ.push(String(text).slice(0,600));
   ttsNext();
 }
-fetch(AI_PROXY_BASE+'/tts').then(r=>r.json()).then(j=>{
-  if(j&&j.enabled){ ttsReady=true; ttsRow.style.display=''; ttsOn=ttsChk.checked; }
-}).catch(()=>{});
+/* 注意:AI_PROXY_BASE 宣告在這段之後(const 有 TDZ),所以探測要等這一輪執行完再打,
+   直接在這裡呼叫會丟 ReferenceError,把後面所有初始化(含算圖迴圈)一起帶走。 */
+setTimeout(()=>{
+  fetch(AI_PROXY_BASE+'/tts').then(r=>r.json()).then(j=>{
+    if(j&&j.enabled){ ttsReady=true; ttsRow.style.display=''; ttsOn=ttsChk.checked; }
+  }).catch(()=>{});
+},0);
 
 const notifyBtn=document.getElementById('notifyBtn');
 notifyBtn.addEventListener('click',()=>{
