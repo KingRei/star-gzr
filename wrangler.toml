@@ -29,7 +29,9 @@ USE_GATEWAY = "0"
 #   DEEPSEEK_API_KEY→ DeepSeek       型號 DEEPSEEK_MODEL 預設 deepseek-chat
 # 沒指定時依 github → gemini → deepseek 的順序挑第一個有金鑰的;
 # 要明講就改這一行(留在版控裡,才不會被下一次 wrangler deploy 洗掉)。
-LLM_PROVIDER = "deepseek"
+# 2026-08-24:DeepSeek 金鑰有效但帳戶餘額為 0(/api/diag 的 probes.llm 回 402
+# Insufficient Balance),先改用有免費額度的 Gemini;儲值後改回 "deepseek" 即可。
+LLM_PROVIDER = "gemini"
 
 # ── 機密(Secret)絕對不要寫在這個檔案 ──
 # 儀表板：Workers & Pages → star-gzr → Settings → Variables and Secrets → Add，型別選 Secret
