@@ -99,6 +99,10 @@ stand) — or just say *"stand on Titan"*.
 留下乾淨的天空。The *Hide buttons* checkbox in the sky pane clears every bottom control and shrinks the panel
 toggle down to a single arrow.
 
+標題列「通知」右邊那顆鈕是**隱藏視角**：按一下只留日心視角，再按一下只留地平視角，第三下回到雙窗，
+留下的那一窗會自己撐滿整個畫面。AI 也能操作它（`paneModeBtn`）。The button right of *Notify* cycles the
+panes: solar-system only → sky only → both, with the surviving pane expanding to fill the window.
+
 ---
 
 ## 指南針對準真實天空 / Compass aiming

@@ -77,12 +77,16 @@
   .primary.is-playing .glyph-play::before{left:0;}
   .primary.is-playing .glyph-play::after{right:0;}
   #notifyBtn.muted{opacity:.55;text-decoration:line-through;}
+#paneModeBtn.on{color:var(--brass);border-color:var(--brass);}
   #micBtn.rec{border-color:#FF8A6B;color:#FF8A6B;animation:micpulse 1s infinite;}
   #micBtn.busy{border-color:var(--cyan);color:var(--cyan);}
   @keyframes micpulse{50%{opacity:.45;}}
   main{flex:1;display:flex;min-height:0;}
   .pane{position:relative;flex:1;min-width:0;min-height:0;}
   .pane+.pane{border-left:1px solid var(--line);}
+  /* 隱藏視角:另一窗收掉,留下的那一窗自己撐滿(邊框也一起去掉) */
+  .pane.off{display:none;}
+  .pane.off+.pane{border-left:none;}
   .pane canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none;}
   .pane canvas:active{cursor:grabbing;}
   .chip{
@@ -237,6 +241,7 @@
   @media (max-width:860px) and (orientation:portrait){
     main{flex-direction:column;}
     .pane+.pane{border-left:none;border-top:1px solid var(--line);}
+    .pane.off+.pane{border-top:none;}
   }
   @media (max-width:900px),(max-height:520px){
     .overlay{font-size:11px;top:40px;}

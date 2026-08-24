@@ -1560,6 +1560,7 @@ function applyLang(){
     if(el)el.textContent=UI_STR[id][k];
   }
   try{ notifyBtn.textContent=notifyOn?T('通知','Notify'):T('靜音','Muted'); }catch(e){} /* 初次呼叫早於宣告,略過 */
+  try{ paneModeBtn.textContent=PANE_STR[paneMode][lang==='zh'?0:1]; }catch(e){}
   const sp=document.getElementById('speed');
   [...sp.options].forEach((o,i)=>o.textContent=SPEED_STR[i][k]);
   const ts=document.getElementById('trackSel');
@@ -2507,6 +2508,20 @@ document.querySelectorAll('#flyPad button').forEach(b=>{
 });
 /* ── 通知開關 ── */
 let notifyOn=true;
+/* ══ 隱藏視角:雙窗 → 只有日心 → 只有地平 → 雙窗 ══
+   收掉的那一窗用 display:none,留下的自動撐滿;resize() 會跳過寬高為 0 的窗,
+   所以還原時要再叫一次才會重設 aspect(不然畫面會被拉扁)。 */
+const paneModeBtn=document.getElementById('paneModeBtn');
+const PANE_STR=[['雙窗','Both'],['只有日心','Solar only'],['只有地平','Sky only']];
+let paneMode=0;
+function applyPaneMode(){
+  paneL.classList.toggle('off',paneMode===2);
+  paneR.classList.toggle('off',paneMode===1);
+  paneModeBtn.textContent=PANE_STR[paneMode][lang==='zh'?0:1];
+  paneModeBtn.classList.toggle('on',paneMode!==0);   /* 非雙窗時亮起,提醒有一窗被收掉 */
+  resize(); setTimeout(resize,30);   /* 版面重排後再量一次 */
+}
+paneModeBtn.addEventListener('click',()=>{ paneMode=(paneMode+1)%3; applyPaneMode(); });
 const notifyBtn=document.getElementById('notifyBtn');
 notifyBtn.addEventListener('click',()=>{
   notifyOn=!notifyOn;
@@ -2565,12 +2580,12 @@ function getKey(enc,lsKey,msg){
 const AI_IDS=['dt','speed','lat','lon','langSel','tidalChk','phaseChk','sphereChk','signChk','orbitChk',
  'scaleChk','obsSel','retroSel','trailChk','trackSel','lockSel','eclLineChk','bgStarChk',
  'dayChk','textChk','hideHorChk','hideBtnChk','invChk','trailFxChk','extraConstChk','extraLvlSel','viewBodySel',
- 'playBtn','nowBtn','resetViewBtn','homeBtn','retroTableBtn','compassBtn'];
+ 'playBtn','nowBtn','resetViewBtn','homeBtn','retroTableBtn','compassBtn','paneModeBtn'];
 const AI_SPEC=`Controls. set:{"type":"set","id":ID,"value":V}; click:{"type":"click","id":ID}.
 dt "YYYY-MM-DDTHH:MM"; speed 3600000|7200000|10800000|21600000|86400000|259200000|864000000|-86400000 (ms sim per s); lat -89.9..89.9; lon -180..180; langSel zh|en.
 Checkbox bool: tidalChk tidal, phaseChk moon-phase&shadows, sphereChk celestial-sphere, signChk zodiac-sectors, orbitChk orbits, scaleChk true-scale, trailChk retro-trail, eclLineChk ref-lines, bgStarChk stars, dayChk day/night, textChk labels, hideHorChk hide-horizon, hideBtnChk hide the sky-pane bottom buttons, invChk invert-drag, trailFxChk motion-trails(only |speed|>=86400000).
 Select: viewBodySel earth|moon|mars|titan = WHERE the observer stands (sky pane is rendered from that world; changed in the LEFT pane); extraLvlSel min|mid|all = how many extra constellations (few / more / all 23, needs extraConstChk true); obsSel none|sun|p0..p8|moon (follow, true-scale only); retroSel 0|1|3|4|5|6|7|8 = Mercury..Pluto; trackSel off|ecl_e|ecl_w|lun_e|lun_w axis-lock; lockSel (locking a c:… constellation ALSO flies the left pane through the Sun to it and lights up its lines) none|sun|moon|c:牡羊座|c:金牛座|c:雙子座|c:巨蟹座|c:獅子座|c:處女座|c:天秤座|c:天蠍座|c:射手座|c:摩羯座|c:水瓶座|c:雙魚座.
-Click: compassBtn toggle compass-aim (phone points at the real sky using its orientation sensor; mobile only, asks permission, cancelled by dragging), playBtn toggle-play, nowBtn now, resetViewBtn initial-view (reset BOTH panes to opening state: sky faces due east above horizon, heliocentric default framing; clears any follow/lock/tour), homeBtn reset-view, retroTableBtn almanac table (retrograde + eclipse tabs).
+Click: compassBtn toggle compass-aim (phone points at the real sky using its orientation sensor; mobile only, asks permission, cancelled by dragging), playBtn toggle-play, nowBtn now, resetViewBtn initial-view (reset BOTH panes to opening state: sky faces due east above horizon, heliocentric default framing; clears any follow/lock/tour), homeBtn reset-view, retroTableBtn almanac table (retrograde + eclipse tabs), paneModeBtn cycles the panes both → heliocentric only → sky only (click 1x/2x/3x to reach the one you want; "hide the sky pane"=1 click from both).
 navigate/tour (camera fly — BOTH panes zoom smoothly): {"type":"navigate","target":BODY} single hop, or {"type":"tour","targets":[BODY,...]} multi-stop. BODY=sun|moon|mercury|venus|earth|mars|jupiter|saturn|uranus|neptune|pluto (Chinese names also accepted). Use for: go to / show me / fly to / navigate / 導覽 / tour from X to Y to Z. "outermost planet / 最外圍行星"=pluto, "innermost / 最內圍"=mercury, "nine planets / 九顆行星"=mercury..pluto in order. BODY may also be a CONSTELLATION name (zodiac or listed), e.g. 牡羊座/Aries, 獅子座/Leo, 天蠍座/Scorpius (zh or en) — a constellation stop turns the sky pane AND flies the heliocentric pane out through the Sun so the constellation itself fills the view, with its lines lit.
 "Where is <constellation>? / X 在哪(裡)?" is a SHOW request: always emit {"type":"navigate","target":X} (optionally also set lockSel to c:X to keep it centred) — never answer with words only.`;
 const AI_SYS='You operate a celestial simulator and answer astronomy questions ONLY. '+
