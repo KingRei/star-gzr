@@ -2,7 +2,8 @@
  * 觀星者 StarGZR — 單一 Worker（靜態網站 + AI 代理）
  *
  * 瀏覽器 → 這個 Worker
- *   /api/asr, /api/llm → Groq Whisper / GitHub Models（可選擇經 AI Gateway）
+ *   /api/asr → Groq Whisper（可選擇經 AI Gateway）
+ *   /api/llm → GitHub Models / Gemini / DeepSeek 擇一（都是 OpenAI 相容格式）
  *   /api/diag          → 診斷：看得到哪些變數、上游回什麼
  *   其他所有路徑        → env.ASSETS（index.html / css / js / favicon…）
  *
@@ -15,9 +16,6 @@
  */
 
 const GROQ_DIRECT = 'https://api.groq.com/openai/v1';
-// Gemini 的 OpenAI 相容層:路徑與請求格式和 OpenAI 一樣,
-// 所以前端不用改,只是 model 名稱要寫 gemini-*,金鑰一樣走 Authorization: Bearer。
-const GEMINI_DIRECT = 'https://generativelanguage.googleapis.com/v1beta/openai';
 // GitHub Models 的新端點（舊的 models.inference.ai.azure.com 已退場）
 // 這個端點的 model 名稱要帶 vendor 前綴，例如 openai/gpt-4o-mini
 const LLM_DIRECT  = 'https://models.github.ai/inference';
@@ -34,33 +32,59 @@ function bases(env) {
 }
 
 /**
- * 決定這次要用哪家對話模型。
- *   LLM_PROVIDER=gemini|github 明講最優先;
- *   沒講的話,有 GEMINI_API_KEY 而沒有 GH_MODELS_TOKEN 就自動用 Gemini。
- * 兩家都是 OpenAI 相容格式,所以只差 base / model / 金鑰。
- * 注意:Gemini 走原生相容端點,不吃 AI Gateway 的 azure-openai 路徑;
- * 想經 Gateway 請把 GEMINI_BASE 設成 .../google-ai-studio 的相容路徑。
+ * 對話模型供應商表。三家都提供 OpenAI 相容的 /chat/completions,
+ * 所以前端送出的 payload 完全不用改,只差 base / model / 金鑰。
+ * 要再加一家,只要在這裡多一列。
+ */
+const LLM_PROVIDERS = {
+  github: {
+    keyName: 'GH_MODELS_TOKEN',
+    baseVar: 'LLM_BASE',            // 走 AI Gateway 時由 bases() 決定
+    modelVar: 'GH_MODEL',
+    defModel: 'openai/gpt-4o-mini', // 這個端點的型號要帶 vendor 前綴
+    gateway: true,                  // 可以套 AI Gateway 的認證標頭
+  },
+  gemini: {
+    keyName: 'GEMINI_API_KEY',
+    baseVar: 'GEMINI_BASE',
+    defBase: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    modelVar: 'GEMINI_MODEL',
+    defModel: 'gemini-2.0-flash',
+    gateway: false,
+    // Gemini 相容層不吃這些 OpenAI 專屬欄位,留著會 400
+    strip: ['frequency_penalty', 'presence_penalty', 'logit_bias'],
+  },
+  deepseek: {
+    keyName: 'DEEPSEEK_API_KEY',
+    baseVar: 'DEEPSEEK_BASE',
+    defBase: 'https://api.deepseek.com/v1',
+    modelVar: 'DEEPSEEK_MODEL',
+    defModel: 'deepseek-chat',      // 另有 deepseek-reasoner(較慢,會回 reasoning_content)
+    gateway: false,
+  },
+};
+/* 沒指定時的挑選順序:誰的金鑰有設就用誰 */
+const LLM_ORDER = ['github', 'gemini', 'deepseek'];
+
+/**
+ * 決定這次要用哪家。LLM_PROVIDER=github|gemini|deepseek 明講最優先;
+ * 沒講就照 LLM_ORDER 找第一個有金鑰的,全都沒有則退回 github(讓錯誤訊息講得清楚)。
+ * 注意:gemini / deepseek 走各自的原生相容端點,不吃 AI Gateway 的 azure-openai 路徑;
+ * 想經 Gateway 請自行把 GEMINI_BASE / DEEPSEEK_BASE 設成完整前綴。
  */
 function llmCfg(env, B) {
-  const pick = String(env.LLM_PROVIDER || '').toLowerCase()
-    || (env.GEMINI_API_KEY && !env.GH_MODELS_TOKEN ? 'gemini' : 'github');
-  if (pick === 'gemini') {
-    return {
-      name: 'gemini',
-      base: env.GEMINI_BASE || GEMINI_DIRECT,
-      model: env.GEMINI_MODEL || 'gemini-2.0-flash',
-      key: env.GEMINI_API_KEY,
-      keyName: 'GEMINI_API_KEY',
-      useGwHeaders: false,
-    };
-  }
+  const asked = String(env.LLM_PROVIDER || '').toLowerCase();
+  const pick = LLM_PROVIDERS[asked] ? asked
+    : (LLM_ORDER.find(n => env[LLM_PROVIDERS[n].keyName]) || 'github');
+  const P = LLM_PROVIDERS[pick];
   return {
-    name: 'github',
-    base: B.llm,
-    model: env.GH_MODEL || 'openai/gpt-4o-mini',
-    key: env.GH_MODELS_TOKEN,
-    keyName: 'GH_MODELS_TOKEN',
-    useGwHeaders: true,
+    name: pick,
+    base: env[P.baseVar] || (P.gateway ? B.llm : P.defBase),
+    model: env[P.modelVar] || P.defModel,
+    key: env[P.keyName],
+    keyName: P.keyName,
+    useGwHeaders: !!P.gateway,
+    strip: P.strip || [],
   };
 }
 
@@ -109,6 +133,7 @@ export default {
           GROQ_API_KEY: has('GROQ_API_KEY'),
           GH_MODELS_TOKEN: has('GH_MODELS_TOKEN'),
           GEMINI_API_KEY: has('GEMINI_API_KEY'),
+          DEEPSEEK_API_KEY: has('DEEPSEEK_API_KEY'),
         },
         probes: {},
       };
@@ -176,8 +201,8 @@ export default {
         let payload = {};
         try { payload = JSON.parse(await req.text()); } catch (_) {}
         payload.model = L.model;
-        // Gemini 相容層不吃某些 OpenAI 專屬欄位,先拿掉以免 400
-        if (L.name === 'gemini') { delete payload.frequency_penalty; delete payload.presence_penalty; delete payload.logit_bias; }
+        // 某些相容層不吃 OpenAI 專屬欄位,依供應商設定先拿掉以免 400
+        for (const k of L.strip) delete payload[k];
 
         const r = await fetch(`${L.base}/chat/completions`, {
           method: 'POST',
