@@ -25,7 +25,7 @@ ALLOWED_ORIGINS = "https://gazer.star-gzr.com,http://localhost:8888"
 USE_GATEWAY = "0"
 # 對話模型三選一(都是 OpenAI 相容格式,前端不用改):
 #   GH_MODELS_TOKEN → GitHub Models  型號 GH_MODEL      預設 openai/gpt-4o-mini
-#   GEMINI_API_KEY  → Google Gemini  型號 GEMINI_MODEL  預設 gemini-2.0-flash
+#   GEMINI_API_KEY  → Google Gemini  型號 GEMINI_MODEL  預設 gemini-3.6-flash
 #   DEEPSEEK_API_KEY→ DeepSeek       型號 DEEPSEEK_MODEL 預設 deepseek-chat
 # 沒指定時依 github → gemini → deepseek 的順序挑第一個有金鑰的;
 # 要明講就改這一行(留在版控裡,才不會被下一次 wrangler deploy 洗掉)。

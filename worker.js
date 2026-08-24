@@ -49,7 +49,9 @@ const LLM_PROVIDERS = {
     baseVar: 'GEMINI_BASE',
     defBase: 'https://generativelanguage.googleapis.com/v1beta/openai',
     modelVar: 'GEMINI_MODEL',
-    defModel: 'gemini-2.0-flash',
+    // 2026-08-24:gemini-2.0-flash 已下架(404,上游要求改用 3.6);
+    // 換型號時直接設變數 GEMINI_MODEL,不用改這個檔。
+    defModel: 'gemini-3.6-flash',
     gateway: false,
     // Gemini 相容層不吃這些 OpenAI 專屬欄位,留著會 400
     strip: ['frequency_penalty', 'presence_penalty', 'logit_bias'],
