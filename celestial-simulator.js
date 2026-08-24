@@ -1856,7 +1856,13 @@ function applyTrack(){
 }
 applyTrack();
 trackSelEl.addEventListener('change',applyTrack);
-lockSelEl.addEventListener('change',applyTrack);
+lockSelEl.addEventListener('change',()=>{
+  applyTrack();
+  /* 鎖定星座時,左窗也飛過去(穿過太陽看它本體)並點亮連線;
+     「巨蟹座在哪」這種問句多半只會設 lockSel,不設就只有右窗會動 */
+  const v=lockSelEl.value;
+  if(typeof v==='string'&&v.startsWith('c:'))focusConstellation(v.slice(2));
+});
 document.getElementById('invChk').addEventListener('change',e=>invDrag=e.target.checked);
 document.getElementById('dayChk').addEventListener('change',e=>dayNight=e.target.checked);
 document.getElementById('retroSel').addEventListener('change',e=>{trailPlanet=+e.target.value;rebuildTrail(simMs);});
@@ -2414,20 +2420,32 @@ function navFaceR(key){
   return {yaw:Math.atan2(wp.x,-wp.z),pitch:Math.asin(Math.max(-1,Math.min(1,wp.y))),fov:34};
 }
 let nav=null;
-function cancelNav(){ nav=null; clearConstHighlight(); }
-function startNav(keys){
+/* 導覽結束後不要把「鎖定中的星座」一起熄掉 */
+function restoreHighlight(){
+  if(typeof lockMode==='string'&&lockMode.startsWith('c:'))highlightConst(lockMode.slice(2));
+  else clearConstHighlight();
+}
+function cancelNav(){ nav=null; restoreHighlight(); }
+/* 鎖定/詢問某個星座時的共用動作:左窗飛過去、兩窗顯示、連線點亮(保留鎖定狀態) */
+function focusConstellation(nm){
+  if(!(ZODIAC[nm]||EXTRA_CONST[nm]))return 0;
+  return startNav(['c:'+nm],true);
+}
+function startNav(keys,keepLock){
   keys=(keys||[]).filter(Boolean);
   if(!keys.length)return 0;
-  observeIdx='none'; obsSel.value='none';
-  lockMode='none'; if(typeof lockSelEl!=='undefined'&&lockSelEl)lockSelEl.value='none';
-  trackMode='off'; if(typeof trackSelEl!=='undefined'&&trackSelEl)trackSelEl.value='off';
+  if(!keepLock){
+    observeIdx='none'; obsSel.value='none';
+    lockMode='none'; if(typeof lockSelEl!=='undefined'&&lockSelEl)lockSelEl.value='none';
+    trackMode='off'; if(typeof trackSelEl!=='undefined'&&trackSelEl)trackSelEl.value='off';
+  }
   if(playing){ playing=false; setPlayLabel(); toast(T('導覽期間暫停播放','Playback paused during tour'),false,true); }
   nav={keys,i:-1}; navStep();
   return keys.length;
 }
 function navStep(){
   nav.i++;
-  if(nav.i>=nav.keys.length){ nav=null; clearConstHighlight(); return; }
+  if(nav.i>=nav.keys.length){ nav=null; restoreHighlight(); return; }
   nav.key=nav.keys[nav.i];
   if(typeof nav.key==='string'&&nav.key.startsWith('c:')){   /* 星座站:確保左天球與兩側星座圖形可見,並點亮連線 */
     const nm=nav.key.slice(2);
@@ -2435,7 +2453,7 @@ function navStep(){
     ids.forEach(id=>{const el=document.getElementById(id); if(el&&!el.checked){el.checked=true; el.dispatchEvent(new Event('change'));}});
     ensureExtraVisible(nm);
     highlightConst(nm);
-  } else { clearConstHighlight(); }
+  } else { restoreHighlight(); }
   nav.L0={target:ctrlL.target.clone(),r:ctrlL.r,theta:ctrlL.theta,phi:ctrlL.phi};
   nav.R0={yaw:ctrlR.yaw,pitch:ctrlR.pitch,fov:ctrlR.cam.fov};
   nav.phase='move'; nav.t=0;
@@ -2551,9 +2569,10 @@ const AI_IDS=['dt','speed','lat','lon','langSel','tidalChk','phaseChk','sphereCh
 const AI_SPEC=`Controls. set:{"type":"set","id":ID,"value":V}; click:{"type":"click","id":ID}.
 dt "YYYY-MM-DDTHH:MM"; speed 3600000|7200000|10800000|21600000|86400000|259200000|864000000|-86400000 (ms sim per s); lat -89.9..89.9; lon -180..180; langSel zh|en.
 Checkbox bool: tidalChk tidal, phaseChk moon-phase&shadows, sphereChk celestial-sphere, signChk zodiac-sectors, orbitChk orbits, scaleChk true-scale, trailChk retro-trail, eclLineChk ref-lines, bgStarChk stars, dayChk day/night, textChk labels, hideHorChk hide-horizon, hideBtnChk hide the sky-pane bottom buttons, invChk invert-drag, trailFxChk motion-trails(only |speed|>=86400000).
-Select: viewBodySel earth|moon|mars|titan = WHERE the observer stands (sky pane is rendered from that world; changed in the LEFT pane); extraLvlSel min|mid|all = how many extra constellations (few / more / all 23, needs extraConstChk true); obsSel none|sun|p0..p8|moon (follow, true-scale only); retroSel 0|1|3|4|5|6|7|8 = Mercury..Pluto; trackSel off|ecl_e|ecl_w|lun_e|lun_w axis-lock; lockSel none|sun|moon|c:牡羊座|c:金牛座|c:雙子座|c:巨蟹座|c:獅子座|c:處女座|c:天秤座|c:天蠍座|c:射手座|c:摩羯座|c:水瓶座|c:雙魚座.
+Select: viewBodySel earth|moon|mars|titan = WHERE the observer stands (sky pane is rendered from that world; changed in the LEFT pane); extraLvlSel min|mid|all = how many extra constellations (few / more / all 23, needs extraConstChk true); obsSel none|sun|p0..p8|moon (follow, true-scale only); retroSel 0|1|3|4|5|6|7|8 = Mercury..Pluto; trackSel off|ecl_e|ecl_w|lun_e|lun_w axis-lock; lockSel (locking a c:… constellation ALSO flies the left pane through the Sun to it and lights up its lines) none|sun|moon|c:牡羊座|c:金牛座|c:雙子座|c:巨蟹座|c:獅子座|c:處女座|c:天秤座|c:天蠍座|c:射手座|c:摩羯座|c:水瓶座|c:雙魚座.
 Click: compassBtn toggle compass-aim (phone points at the real sky using its orientation sensor; mobile only, asks permission, cancelled by dragging), playBtn toggle-play, nowBtn now, resetViewBtn initial-view (reset BOTH panes to opening state: sky faces due east above horizon, heliocentric default framing; clears any follow/lock/tour), homeBtn reset-view, retroTableBtn almanac table (retrograde + eclipse tabs).
-navigate/tour (camera fly — BOTH panes zoom smoothly): {"type":"navigate","target":BODY} single hop, or {"type":"tour","targets":[BODY,...]} multi-stop. BODY=sun|moon|mercury|venus|earth|mars|jupiter|saturn|uranus|neptune|pluto (Chinese names also accepted). Use for: go to / show me / fly to / navigate / 導覽 / tour from X to Y to Z. "outermost planet / 最外圍行星"=pluto, "innermost / 最內圍"=mercury, "nine planets / 九顆行星"=mercury..pluto in order. BODY may also be a CONSTELLATION name (zodiac or listed), e.g. 牡羊座/Aries, 獅子座/Leo, 天蠍座/Scorpius (zh or en) — constellations turn only the sky pane.`;
+navigate/tour (camera fly — BOTH panes zoom smoothly): {"type":"navigate","target":BODY} single hop, or {"type":"tour","targets":[BODY,...]} multi-stop. BODY=sun|moon|mercury|venus|earth|mars|jupiter|saturn|uranus|neptune|pluto (Chinese names also accepted). Use for: go to / show me / fly to / navigate / 導覽 / tour from X to Y to Z. "outermost planet / 最外圍行星"=pluto, "innermost / 最內圍"=mercury, "nine planets / 九顆行星"=mercury..pluto in order. BODY may also be a CONSTELLATION name (zodiac or listed), e.g. 牡羊座/Aries, 獅子座/Leo, 天蠍座/Scorpius (zh or en) — a constellation stop turns the sky pane AND flies the heliocentric pane out through the Sun so the constellation itself fills the view, with its lines lit.
+"Where is <constellation>? / X 在哪(裡)?" is a SHOW request: always emit {"type":"navigate","target":X} (optionally also set lockSel to c:X to keep it centred) — never answer with words only.`;
 const AI_SYS='You operate a celestial simulator and answer astronomy questions ONLY. '+
  'Refuse anything unrelated to astronomy or simulator control (no actions, brief polite reply). '+
  'The user input comes from speech-to-text and may contain homophones or misheard words; silently correct them to the nearest valid body name or command (per the vocabulary below) before acting. Only if genuinely ambiguous, ask one short clarifying question in reply instead of guessing wildly. '+
