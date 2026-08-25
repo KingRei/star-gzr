@@ -62,7 +62,9 @@ const LLM_PROVIDERS = {
     baseVar: 'DEEPSEEK_BASE',
     defBase: 'https://api.deepseek.com/v1',
     modelVar: 'DEEPSEEK_MODEL',
-    defModel: 'deepseek-chat',      // 另有 deepseek-reasoner(較慢,會回 reasoning_content)
+    // 2026-07-24 起舊的 deepseek-chat / deepseek-reasoner 已退役,改用 v4 系列;
+    // 若上游又換名,設變數 DEEPSEEK_MODEL 覆蓋即可(另有較慢的 deepseek-v4-pro)。
+    defModel: 'deepseek-v4-flash',
     gateway: false,
   },
 };
