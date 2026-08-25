@@ -256,7 +256,9 @@
     .overlay{font-size:11px;top:40px;}
     header{gap:5px;padding:5px 8px;}
     header .brand b{font-size:12px;letter-spacing:.18em;}
-    header .brand span{display:none;}
+    /* 手機也留著 STARGZR,只縮小;彩蛋署名仍隱藏(免得占掉標題列寬度) */
+    header .brand span{font-size:9.5px;letter-spacing:.1em;}
+    header .brand #authorTag{display:none;}
     /* 手機:標題自成一列,語言切換釘在這一列的右上角(它原本的 .ctl 只留通知/視角鈕) */
     header .brand{flex:1 0 100%;padding-right:78px;}
     header #langSel{position:absolute;top:5px;right:8px;z-index:3;}
