@@ -251,6 +251,19 @@ export default {
         });
         out.probes.llm = { status: r.status, body: (await r.text()).slice(0, 200) };
       } catch (e) { out.probes.llm = { error: String(e) }; }
+      // 朗讀:真的合成一小段,才知道金鑰/聲音 ID/型號對不對(沒開就跳過)
+      {
+        const t = ttsCfg(env);
+        if (!t.enabled) out.probes.tts = { skipped: t.reason };
+        else try {
+          const q = t.P.build(t, 'test');
+          const r = await fetch(q.url, { method: 'POST', headers: q.headers, body: q.body });
+          const ct = r.headers.get('content-type') || '';
+          out.probes.tts = r.ok
+            ? { status: r.status, content_type: ct, bytes: (await r.arrayBuffer()).byteLength }
+            : { status: r.status, body: (await r.text()).slice(0, 200) };
+        } catch (e) { out.probes.tts = { error: String(e) }; }
+      }
       return new Response(JSON.stringify(out, null, 2), {
         headers: { ...cors, 'content-type': 'application/json; charset=utf-8' },
       });

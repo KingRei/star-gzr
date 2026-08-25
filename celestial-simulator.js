@@ -2571,7 +2571,7 @@ paneModeBtn.addEventListener('click',()=>{ paneMode=(paneMode+1)%3; applyPaneMod
 /* ══ 朗讀通知(TTS)══
    完全由伺服器決定開不開:Worker 有設 TTS_PROVIDER + 對應金鑰,GET /api/tts 才回 enabled,
    這個選項才會出現。金鑰永遠不進瀏覽器。播放採序列佇列,避免兩則通知疊在一起講。 */
-let ttsReady=false, ttsOn=true, ttsFails=0;
+let ttsReady=false, ttsOn=true, ttsFails=0, ttsUnlocked=false, ttsToldBlocked=false;
 const ttsQ=[]; let ttsAudio=null, ttsPlaying=false;
 const ttsRow=document.getElementById('ttsRow');
 const ttsChk=document.getElementById('ttsChk');
@@ -2588,16 +2588,26 @@ async function ttsNext(){
   try{
     const r=await fetch(AI_PROXY_BASE+'/tts',{method:'POST',
       headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
-    if(!r.ok)throw new Error('tts '+r.status);
+    if(!r.ok){ let d=''; try{ d=(await r.clone().text()).slice(0,120); }catch(_){} throw new Error('tts '+r.status+(d?' '+d:'')); }
     const url=URL.createObjectURL(await r.blob());
     const au=new Audio(url); ttsAudio=au; ttsFails=0;
     await new Promise(res=>{
       au.onended=au.onerror=()=>{ URL.revokeObjectURL(url); res(); };
-      au.play().catch(()=>{ URL.revokeObjectURL(url); res(); });  /* 自動播放被擋就安靜跳過 */
+      /* 瀏覽器規定:使用者還沒跟頁面互動過就不准出聲。講清楚,不要靜靜失敗 */
+      au.play().then(()=>{ ttsUnlocked=true; }).catch(err=>{
+        URL.revokeObjectURL(url);
+        if(!ttsUnlocked&&!ttsToldBlocked){
+          ttsToldBlocked=true;
+          toast(T('瀏覽器擋住自動播放,點一下畫面就會開始朗讀','Autoplay blocked — tap the page once to enable speech'),false,true);
+        }else console.warn('[TTS] play blocked',err);
+        res();
+      });
     });
-  }catch(_){
-    /* 連錯三次就收起來,不要每則通知都去打一次上游 */
-    if(++ttsFails>=3){ ttsReady=false; ttsRow.style.display='none'; ttsQ.length=0; }
+  }catch(e){
+    /* 連錯三次就收起來,不要每則通知都去打一次上游;但第一次要講出原因 */
+    console.warn('[TTS]',e);
+    if(++ttsFails===1)toast(T('朗讀失敗:','Speech failed: ')+String(e.message||e)+T('(看 /api/diag 的 probes.tts)',' (see probes.tts in /api/diag)'),false,true);
+    if(ttsFails>=3){ ttsReady=false; ttsRow.style.display='none'; ttsQ.length=0; }
   }
   ttsAudio=null; ttsPlaying=false; ttsNext();
 }
@@ -2612,8 +2622,23 @@ function speak(text){
 setTimeout(()=>{
   fetch(AI_PROXY_BASE+'/tts').then(r=>r.json()).then(j=>{
     if(j&&j.enabled){ ttsReady=true; ttsRow.style.display=''; ttsOn=ttsChk.checked; }
+    else console.info('[TTS] disabled:',(j&&j.reason)||'no answer');
   }).catch(()=>{});
 },0);
+/* 第一次點/摸畫面時解鎖音訊:播一段無聲,之後 Audio.play() 就不會被擋 */
+{
+  const unlock=()=>{
+    ttsUnlocked=true;
+    try{
+      const a=new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=');
+      a.volume=0; a.play().catch(()=>{});
+    }catch(_){}
+    window.removeEventListener('pointerdown',unlock);
+    window.removeEventListener('keydown',unlock);
+  };
+  window.addEventListener('pointerdown',unlock,{once:false});
+  window.addEventListener('keydown',unlock,{once:false});
+}
 
 const notifyBtn=document.getElementById('notifyBtn');
 notifyBtn.addEventListener('click',()=>{
