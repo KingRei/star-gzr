@@ -1275,6 +1275,7 @@ function toast(msg,isRetro,force){
   d.className='toast '+(isRetro?'retro':'pro');
   d.textContent=msg;
   toastsEl.appendChild(d);
+  try{ speak(msg); }catch(_){}   /* TTS 宣告在後面,開場的通知略過 */
   while(toastsEl.children.length>4)toastsEl.firstChild.remove();
   setTimeout(()=>{d.style.opacity='0';d.style.transition='opacity .4s';setTimeout(()=>d.remove(),420);},5500);
 }
@@ -1504,7 +1505,7 @@ document.getElementById('yNext').addEventListener('click',()=>{tableYear++;rende
    ══════════════════════════════════════════════════════════ */
 const UI_STR={
   uiTime:['時刻','Time'], uiSpeed:['速度','Speed'], uiLat:['緯度','Lat'], uiLon:['經度','Lon'],
-  nowBtn:['切現在','Jump now'],
+  nowBtn:['切到現在','Jump now'],
   resetViewBtn:['回初始位','Initial view'],
   retroTableBtn:['時刻表','Almanac'],
   tabRetro:['行星逆行','Retrogrades'],
@@ -1525,6 +1526,7 @@ const UI_STR={
   uiTrack:['軸置中','Axis lock'],
   uiInv:['反向拖曳','Invert drag'],
   uiHideHor:['隱藏地平線','Hide horizon'],
+  uiTts:['唸出通知','Read notifications aloud'],
   uiHideBtn:['隱藏按鈕','Hide buttons'],
   uiTrailFx:['運動殘影(星軌)','Motion trails (star arcs)'],
   anchorHint:['＊ 周日運動已凍結(等效每天同一時刻觀測):日夜循環與昇落暫停;地平線仍是該時刻的真實地平',
@@ -1660,8 +1662,7 @@ async function setCompass(on){
     if(!compassAllowed()){
       const i=VIEWBODY_ORDER.indexOf(viewBody);
       const nm=(i>=0?VIEWBODY_STR[i][lang==='zh'?0:1]:viewBody);
-      toast(T('指南針只能在地球上使用(目前觀察地:'+nm+')。請先把觀察地切回地球。',
-              'Compass aim only works on Earth (observer is currently '+nm+'). Switch the observer world back to Earth first.'),false,true);
+      toast(T(nm+'沒有指南針,請在地球上使用','No compass on '+nm+' — use it on Earth'),false,true);
       return;
     }
     if(typeof DeviceOrientationEvent==='undefined'){
@@ -1716,7 +1717,9 @@ function syncViewBodyChip(){
   const sel=document.getElementById('viewBodySel');
   const i=VIEWBODY_ORDER.indexOf(sel.value);
   const nm=(typeof VIEWBODY_STR!=='undefined'&&i>=0)?VIEWBODY_STR[i][lang==='zh'?0:1]:sel.value;
-  viewBodyChip.textContent=T('觀察地:','Observer: ')+nm;
+  const lbl=document.getElementById('viewBodyLbl');
+  if(lbl)lbl.textContent=T('觀察地','Observer');   /* 圖示旁的固定字樣 */
+  viewBodyChip.textContent=nm;                     /* 右邊名牌寫星球名,顏色也跟著換 */
   viewBodyBtn.title=T('觀察地:','Observer: ')+nm+T('(點一下換下一個)',' (click to switch)');
   const dock=viewBodyBtn.parentElement;
   if(dock)dock.style.setProperty('--vb',VIEWBODY_COLOR[sel.value]||'#6FC3D6');
@@ -2536,7 +2539,7 @@ let notifyOn=true;
    收掉的那一窗用 display:none,留下的自動撐滿;resize() 會跳過寬高為 0 的窗,
    所以還原時要再叫一次才會重設 aspect(不然畫面會被拉扁)。 */
 const paneModeBtn=document.getElementById('paneModeBtn');
-const PANE_STR=[['雙窗','Both'],['只有日心','Solar only'],['只有地平','Sky only']];
+const PANE_STR=[['雙窗','Dual'],['只有日心','Solar only'],['只有地平','Sky only']];
 let paneMode=0;
 function applyPaneMode(){
   paneL.classList.toggle('off',paneMode===2);
@@ -2546,6 +2549,53 @@ function applyPaneMode(){
   resize(); setTimeout(resize,30);   /* 版面重排後再量一次 */
 }
 paneModeBtn.addEventListener('click',()=>{ paneMode=(paneMode+1)%3; applyPaneMode(); });
+/* ══ 朗讀通知(TTS)══
+   完全由伺服器決定開不開:Worker 有設 TTS_PROVIDER + 對應金鑰,GET /api/tts 才回 enabled,
+   這個選項才會出現。金鑰永遠不進瀏覽器。播放採序列佇列,避免兩則通知疊在一起講。 */
+let ttsReady=false, ttsOn=true, ttsFails=0;
+const ttsQ=[]; let ttsAudio=null, ttsPlaying=false;
+const ttsRow=document.getElementById('ttsRow');
+const ttsChk=document.getElementById('ttsChk');
+ttsChk.addEventListener('change',e=>{ ttsOn=e.target.checked; if(!ttsOn)ttsStop(); });
+function ttsStop(){
+  ttsQ.length=0;
+  if(ttsAudio){ try{ ttsAudio.pause(); }catch(_){} ttsAudio=null; }
+  ttsPlaying=false;
+}
+async function ttsNext(){
+  if(ttsPlaying||!ttsQ.length)return;
+  ttsPlaying=true;
+  const text=ttsQ.shift();
+  try{
+    const r=await fetch(AI_PROXY_BASE+'/tts',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    if(!r.ok)throw new Error('tts '+r.status);
+    const url=URL.createObjectURL(await r.blob());
+    const au=new Audio(url); ttsAudio=au; ttsFails=0;
+    await new Promise(res=>{
+      au.onended=au.onerror=()=>{ URL.revokeObjectURL(url); res(); };
+      au.play().catch(()=>{ URL.revokeObjectURL(url); res(); });  /* 自動播放被擋就安靜跳過 */
+    });
+  }catch(_){
+    /* 連錯三次就收起來,不要每則通知都去打一次上游 */
+    if(++ttsFails>=3){ ttsReady=false; ttsRow.style.display='none'; ttsQ.length=0; }
+  }
+  ttsAudio=null; ttsPlaying=false; ttsNext();
+}
+function speak(text){
+  if(!ttsReady||!ttsOn||!text)return;
+  if(ttsQ.length>=2)ttsQ.shift();     /* 通知洗版時只留最新兩則 */
+  ttsQ.push(String(text).slice(0,600));
+  ttsNext();
+}
+/* 注意:AI_PROXY_BASE 宣告在這段之後(const 有 TDZ),所以探測要等這一輪執行完再打,
+   直接在這裡呼叫會丟 ReferenceError,把後面所有初始化(含算圖迴圈)一起帶走。 */
+setTimeout(()=>{
+  fetch(AI_PROXY_BASE+'/tts').then(r=>r.json()).then(j=>{
+    if(j&&j.enabled){ ttsReady=true; ttsRow.style.display=''; ttsOn=ttsChk.checked; }
+  }).catch(()=>{});
+},0);
+
 const notifyBtn=document.getElementById('notifyBtn');
 notifyBtn.addEventListener('click',()=>{
   notifyOn=!notifyOn;
@@ -2603,7 +2653,7 @@ function getKey(enc,lsKey,msg){
 }
 const AI_IDS=['dt','speed','lat','lon','langSel','tidalChk','phaseChk','sphereChk','signChk','orbitChk',
  'scaleChk','obsSel','retroSel','trailChk','trackSel','lockSel','eclLineChk','bgStarChk',
- 'dayChk','textChk','hideHorChk','hideBtnChk','invChk','trailFxChk','extraConstChk','extraLvlSel','viewBodySel',
+ 'dayChk','textChk','hideHorChk','hideBtnChk','invChk','trailFxChk','extraConstChk','extraLvlSel','viewBodySel','ttsChk',
  'playBtn','nowBtn','resetViewBtn','homeBtn','retroTableBtn','compassBtn','paneModeBtn'];
 const AI_SPEC=`Controls. set:{"type":"set","id":ID,"value":V}; click:{"type":"click","id":ID}.
 dt "YYYY-MM-DDTHH:MM"; speed 3600000|7200000|10800000|21600000|86400000|259200000|864000000|-86400000 (ms sim per s); lat -89.9..89.9; lon -180..180; langSel zh|en.
