@@ -2154,8 +2154,12 @@ function animate(now){
       const sc=(DOME*0.9)*Math.atan((Rkm/AU_KM)/Math.max(distAU,1e-9))/b.dotR;
       const k=Math.min(60,Math.max(trueSize?minVisScale(b.dotR):1,sc));
       b.dot.scale.setScalar(k);
-      /* 光暈與日冕是貼著天體的,真實模式下要一起縮,不然會浮在旁邊 */
-      if(b.glowObj)b.glowObj.scale.setScalar(trueSize?Math.max(k,0.06):1);
+      /* 光暈:真實模式下太陽維持原大小——眼睛看到的日面炫光本來就遠大於 0.5 度的日盤;
+         月亮縮一半留一點暈,其餘天體才真的跟著盤面縮。日冕貼著日盤,照實縮。 */
+      if(b.glowObj){
+        const gs=!trueSize?1:(b.key==='sun'?1:(b.key==='moon'?Math.max(k,0.35):Math.max(k,0.06)));
+        b.glowObj.scale.setScalar(gs);
+      }
       if(b.key==='sun')coronaSprite.scale.setScalar(13*(trueSize?Math.max(k,0.06):1));
     }
     v.applyMatrix4(skyMat4);
@@ -2637,8 +2641,8 @@ function minVisScale(dotR){
 }
 document.getElementById('trueSizeChk').addEventListener('change',e=>{
   trueSize=e.target.checked;
-  toast(trueSize?T('日月行星改用真實視大小:太陽與月亮各約 0.5 度,行星幾乎只剩亮點',
-                   'True apparent sizes: Sun and Moon ~0.5° each, planets are nearly points')
+  toast(trueSize?T('真實視大小:日月各約 0.5 度(整片天空的 1/180),縮小視野倍率才看得出圓盤',
+                   'True sizes: Sun and Moon are ~0.5° each — narrow the field of view to see the discs')
                :T('日月行星改回示意大小','Schematic sizes restored'));
 });
 
