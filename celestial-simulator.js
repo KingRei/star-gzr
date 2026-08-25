@@ -944,6 +944,10 @@ const EXTRA_CONST={
 const extraGroupR=new THREE.Group(); extraGroupR.visible=false; starFrameR.add(extraGroupR);
 const ECL_POLE_EQ=new THREE.Vector3(0,-Math.sin(OBLQ),Math.cos(OBLQ));
 let starsR, eclLineR, eqLineR, signSkyGroup, showEclLines=false; /* 參考線預設關閉 */
+/* 日月行星的視大小:預設是「示意」尺寸(太陽約 3.3°、行星約 1.4°,遠大於真實),
+   勾了這個才用真實角徑 2·atan(R/d)。真實尺寸下行星只有 0.01° 上下,
+   所以保留一個約 1.2 像素的下限,否則會完全看不見(真實夜空裡它們也是靠亮度而非大小被看見)。 */
+let trueSize=false;
 {
   const eqp=[]; for(let k=0;k<=128;k++){const a=k/128*2*Math.PI;eqp.push(eqUnit(a,0).multiplyScalar(DOME*0.97));}
   eqLineR=new THREE.Line(new THREE.BufferGeometry().setFromPoints(eqp),
@@ -1028,10 +1032,11 @@ function addSkyBody(key,getText,colorCss,dotR,glow,boldLbl){
   grp.add(dot);
   /* 光暈為天體本身的物理泛光:隨場景縮放,不做視角補償
      (舊版補償導致放大後光暈縮進日盤內、太陽看起來不亮的 bug) */
-  if(glow){const g=makeGlow(glow[0],glow[1],glow[2]);grp.add(g);}
+  let glowObj=null;
+  if(glow){glowObj=makeGlow(glow[0],glow[1],glow[2]);grp.add(glowObj);}
   const lbl=mkLbl('R',getText,colorCss,4.2,boldLbl);
   lbl.position.set(0,dotR+3.2,0); grp.add(lbl);
-  skyBodies.push({key,grp,mat,lbl,dot,dotR});
+  skyBodies.push({key,grp,mat,lbl,dot,dotR,glowObj,glowR:glow?glow[2]:0});
 }
 addSkyBody('sun',()=>T('太陽','Sun'),'#ffd75e',2.6,['rgba(255,240,180,1)','rgba(255,190,80,.5)',16],true);
 skyBodies[0].grp.traverse(o=>{o.renderOrder=Math.max(o.renderOrder||0,1);}); /* 太陽層級低於月盤 */
@@ -1537,6 +1542,7 @@ const UI_STR={
   uiDay:['日夜背景變化','Day–night background'],
   uiText:['文字標籤','Text labels'],
   uiEclLine:['黃道/白道/天球赤道線','Ecliptic / lunar / equator lines'],
+  uiTrueSize:['日月行星真實視大小','True apparent sizes'],
   uiPhase:['月相與影錐','Moon phase & shadows'],
   uiScale:['正確比例(距離線性)','True scale (linear distances)'],
   uiFootTime:['模擬時刻','Sim time'], uiFootLoc:['觀測地','Observer'],
@@ -2143,10 +2149,14 @@ function animate(now){
     const e=eclToEq(rotEclZ(g,psiR));
     const v=new THREE.Vector3(e.x,e.y,e.z).normalize().multiplyScalar(DOME*0.9);
     b.grp.position.copy(v);
-    if(b.dot){ /* 視大小:依真實角尺寸放大(近距天體變大),下限=原點大小 */
+    if(b.dot){ /* 視大小:依真實角尺寸放大(近距天體變大);下限預設=示意圓點,真實模式下=約 1.2 像素 */
       const Rkm=b.key==='sun'?696000: b.key==='moon'?1737.4: TRUE_KM[b.key];
       const sc=(DOME*0.9)*Math.atan((Rkm/AU_KM)/Math.max(distAU,1e-9))/b.dotR;
-      b.dot.scale.setScalar(Math.min(60,Math.max(1,sc)));
+      const k=Math.min(60,Math.max(trueSize?minVisScale(b.dotR):1,sc));
+      b.dot.scale.setScalar(k);
+      /* 光暈與日冕是貼著天體的,真實模式下要一起縮,不然會浮在旁邊 */
+      if(b.glowObj)b.glowObj.scale.setScalar(trueSize?Math.max(k,0.06):1);
+      if(b.key==='sun')coronaSprite.scale.setScalar(13*(trueSize?Math.max(k,0.06):1));
     }
     v.applyMatrix4(skyMat4);
     const below=!hideHorizon && v.y<0;
@@ -2172,6 +2182,10 @@ function animate(now){
       moonSprite.material.needsUpdate=true;
     }
   }
+  /* 月盤大小:示意 4.6(約 2.9°),真實模式下 = 2·90·tan(月角半徑) ≈ 0.8(約 0.52°) */
+  moonSprite.scale.setScalar(trueSize
+    ? Math.max(2*(DOME*0.9)*Math.tan(Math.atan(1737.4/mgR.distKm)), minVisScale(1))
+    : 4.6);
   sunDirLight.position.copy(sunWorld); /* 行星光影朝向太陽 */
   /* 月食呈現(地球觀察地):本影盤在反日點,半徑=本影角半徑/月角半徑 × 月盤 */
   const lunEcl=(eclipseState==='lunarT'||eclipseState==='lunarP');
@@ -2615,6 +2629,19 @@ function decodeKey(b){ try{ return b? _xor(atob(b)) : ''; }catch(e){ return ''; 
 /* AI 代理端點:填入 Cloudflare Worker 網址
    (如 'https://stargzr-ai.你的帳號.workers.dev'),經 Cloudflare AI Gateway
    集中管理金鑰、速率限制與用量分析。留空則直接使用本機金鑰模式。 */
+/* 真實視大小時的最低可見度:換算成大約 1.2 個像素,避免行星整顆消失 */
+function minVisScale(dotR){
+  const h=rendR.domElement.clientHeight||600;
+  const angPerPx=(camR.fov*DEG)/h;
+  return (DOME*0.9)*Math.tan(angPerPx*0.6)/Math.max(dotR,1e-6);
+}
+document.getElementById('trueSizeChk').addEventListener('change',e=>{
+  trueSize=e.target.checked;
+  toast(trueSize?T('日月行星改用真實視大小:太陽與月亮各約 0.5 度,行星幾乎只剩亮點',
+                   'True apparent sizes: Sun and Moon ~0.5° each, planets are nearly points')
+               :T('日月行星改回示意大小','Schematic sizes restored'));
+});
+
 const AI_PROXY_BASE='/api';
 /* 代理失敗時把原因顯示出來,免得只看到「要 API Key」卻不知道哪裡壞掉。
    proxyLast 記下最後一次的狀態碼與上游訊息:代理「有回應但出錯」時就不該再去問
@@ -2652,7 +2679,7 @@ function getKey(enc,lsKey,msg){
   return k;
 }
 const AI_IDS=['dt','speed','lat','lon','langSel','tidalChk','phaseChk','sphereChk','signChk','orbitChk',
- 'scaleChk','obsSel','retroSel','trailChk','trackSel','lockSel','eclLineChk','bgStarChk',
+ 'scaleChk','obsSel','retroSel','trailChk','trackSel','lockSel','eclLineChk','trueSizeChk','bgStarChk',
  'dayChk','textChk','hideHorChk','hideBtnChk','invChk','trailFxChk','extraConstChk','extraLvlSel','viewBodySel','ttsChk',
  'playBtn','nowBtn','resetViewBtn','homeBtn','retroTableBtn','compassBtn','paneModeBtn'];
 const AI_SPEC=`Controls. set:{"type":"set","id":ID,"value":V}; click:{"type":"click","id":ID}.
