@@ -19,33 +19,32 @@ CF_ACCOUNT_ID = "5877a87bfbfca92ab863b26013c7e5ce"
 CF_GATEWAY_ID = "stargzr"
 # 同源呼叫不帶 Origin，這裡主要是給本機開發用
 ALLOWED_ORIGINS = "https://gazer.star-gzr.com,http://localhost:8888"
-# 預設直連 Groq / Gemini / DeepSeek（金鑰仍在 Worker，不進瀏覽器）。
+# 預設直連 Groq / GitHub Models（金鑰仍在 Worker，不進瀏覽器）。
 # 想改走 Cloudflare AI Gateway 再設成 "1"；路徑不合時可用
 # GROQ_BASE / LLM_BASE 覆寫完整前綴。
 USE_GATEWAY = "0"
 # 對話模型三選一(都是 OpenAI 相容格式,前端不用改):
-#   GROQ_API_KEY    → Groq(ASR 已在用同一把) 型號 GROQ_LLM_MODEL 預設 llama-3.3-70b-versatile
+#   GH_MODELS_TOKEN → GitHub Models  型號 GH_MODEL      預設 openai/gpt-4o-mini
 #   GEMINI_API_KEY  → Google Gemini  型號 GEMINI_MODEL  預設 gemini-3.6-flash
-#   DEEPSEEK_API_KEY→ DeepSeek       型號 DEEPSEEK_MODEL 預設 deepseek-v4-flash
-# 沒指定時依 groq → gemini → deepseek 的順序挑第一個有金鑰的;失敗會自動換下一家。
+#   DEEPSEEK_API_KEY→ DeepSeek       型號 DEEPSEEK_MODEL 預設 deepseek-chat
+# 沒指定時依 github → gemini → deepseek 的順序挑第一個有金鑰的;
 # 要明講就改這一行(留在版控裡,才不會被下一次 wrangler deploy 洗掉)。
-# 2026-08-25:GitHub Models 已於 7/30 全面退役,整家移除;Gemini 免費層一直 429、
-# DeepSeek 餘額 0 回 402,所以改用不必另外申請的 Groq。
-LLM_PROVIDER = "groq"
+# 2026-08-24:DeepSeek 金鑰有效但帳戶餘額為 0(/api/diag 的 probes.llm 回 402
+# Insufficient Balance),先改用有免費額度的 Gemini;儲值後改回 "deepseek" 即可。
+LLM_PROVIDER = "gemini"
 
 # 朗讀通知(TTS)。刻意預設關閉:這一行沒設,前端就完全看不到「唸出通知」選項。
 #   TTS_PROVIDER = "openai"     金鑰 OPENAI_API_KEY      預設 gpt-4o-mini-tts / alloy   中文 OK
 #   TTS_PROVIDER = "elevenlabs" 金鑰 ELEVENLABS_API_KEY  預設 eleven_flash_v2_5 / Rachel 中文 OK、延遲最低
 #   TTS_PROVIDER = "groq"       金鑰 GROQ_API_KEY(已有)  預設 playai-tts / Fritz-PlayAI  只有英文
 # 想換型號或聲音:TTS_MODEL / TTS_VOICE。
-# 注意:TTS_PROVIDER 一定要寫在這裡。[vars] 部署時會整組取代儀表板上的 Plaintext 變數,
-# 只寫在儀表板的話下一次 wrangler deploy 就被洗掉(Secret 不受影響)。
-TTS_PROVIDER = "elevenlabs"
+# TTS_PROVIDER = "openai"
 
 # ── 機密(Secret)絕對不要寫在這個檔案 ──
 # 儀表板：Workers & Pages → star-gzr → Settings → Variables and Secrets → Add，型別選 Secret
 #   CF_AIG_TOKEN     （Authenticated Gateway 用）
 #   GROQ_API_KEY     （若非 BYOK 才需要）
+#   GH_MODELS_TOKEN  （若非 BYOK 才需要）
 #   GEMINI_API_KEY   （改用 Gemini 時)
 #   DEEPSEEK_API_KEY （改用 DeepSeek 時)
 #   OPENAI_API_KEY   （TTS_PROVIDER=openai 時)

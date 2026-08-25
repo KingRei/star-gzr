@@ -17,9 +17,9 @@
  */
 
 const GROQ_DIRECT = 'https://api.groq.com/openai/v1';
-// GitHub Models 已於 2026-07-30 全面退役（playground、模型目錄、推論 API、BYOK 全關），
-// 這個常數只留給 USE_GATEWAY=1 時的 azure-openai 路徑當預設值。
-const LLM_DIRECT  = GROQ_DIRECT;
+// GitHub Models 的新端點（舊的 models.inference.ai.azure.com 已退場）
+// 這個端點的 model 名稱要帶 vendor 前綴，例如 openai/gpt-4o-mini
+const LLM_DIRECT  = 'https://models.github.ai/inference';
 
 function bases(env) {
   const useGw = String(env.USE_GATEWAY || '') === '1';
@@ -38,14 +38,12 @@ function bases(env) {
  * 要再加一家,只要在這裡多一列。
  */
 const LLM_PROVIDERS = {
-  // Groq:ASR 已經在用同一把 GROQ_API_KEY,對話模型直接沿用,不必再申請任何東西
-  groq: {
-    keyName: 'GROQ_API_KEY',
-    baseVar: 'GROQ_LLM_BASE',
-    defBase: GROQ_DIRECT,
-    modelVar: 'GROQ_LLM_MODEL',
-    defModel: 'llama-3.3-70b-versatile',
-    gateway: false,
+  github: {
+    keyName: 'GH_MODELS_TOKEN',
+    baseVar: 'LLM_BASE',            // 走 AI Gateway 時由 bases() 決定
+    modelVar: 'GH_MODEL',
+    defModel: 'openai/gpt-4o-mini', // 這個端點的型號要帶 vendor 前綴
+    gateway: true,                  // 可以套 AI Gateway 的認證標頭
   },
   gemini: {
     keyName: 'GEMINI_API_KEY',
@@ -71,7 +69,7 @@ const LLM_PROVIDERS = {
   },
 };
 /* 沒指定時的挑選順序:誰的金鑰有設就用誰 */
-const LLM_ORDER = ['groq', 'gemini', 'deepseek'];
+const LLM_ORDER = ['github', 'gemini', 'deepseek'];
 
 /**
  * 語音朗讀(TTS)。刻意「不自動啟用」:一定要設變數 TTS_PROVIDER 才會開,
@@ -132,8 +130,8 @@ function ttsCfg(env) {
 }
 
 /**
- * 決定這次要用哪家。LLM_PROVIDER=groq|gemini|deepseek 明講最優先;
- * 沒講就照 LLM_ORDER 找第一個有金鑰的,全都沒有則退回 groq(讓錯誤訊息講得清楚)。
+ * 決定這次要用哪家。LLM_PROVIDER=github|gemini|deepseek 明講最優先;
+ * 沒講就照 LLM_ORDER 找第一個有金鑰的,全都沒有則退回 github(讓錯誤訊息講得清楚)。
  * 注意:gemini / deepseek 走各自的原生相容端點,不吃 AI Gateway 的 azure-openai 路徑;
  * 想經 Gateway 請自行把 GEMINI_BASE / DEEPSEEK_BASE 設成完整前綴。
  */
@@ -152,7 +150,7 @@ function llmCfgOf(name, env, B) {
 function llmCfg(env, B) {
   const asked = String(env.LLM_PROVIDER || '').toLowerCase();
   const pick = LLM_PROVIDERS[asked] ? asked
-    : (LLM_ORDER.find(n => env[LLM_PROVIDERS[n].keyName]) || 'groq');
+    : (LLM_ORDER.find(n => env[LLM_PROVIDERS[n].keyName]) || 'github');
   return llmCfgOf(pick, env, B);
 }
 
@@ -222,6 +220,7 @@ export default {
           ALLOWED_ORIGINS: env.ALLOWED_ORIGINS || '(unset → *)',
           CF_AIG_TOKEN: has('CF_AIG_TOKEN'),
           GROQ_API_KEY: has('GROQ_API_KEY'),
+          GH_MODELS_TOKEN: has('GH_MODELS_TOKEN'),
           GEMINI_API_KEY: has('GEMINI_API_KEY'),
           DEEPSEEK_API_KEY: has('DEEPSEEK_API_KEY'),
           TTS_PROVIDER: env.TTS_PROVIDER || '(unset → TTS off)',
@@ -251,19 +250,6 @@ export default {
         });
         out.probes.llm = { status: r.status, body: (await r.text()).slice(0, 200) };
       } catch (e) { out.probes.llm = { error: String(e) }; }
-      // 朗讀:真的合成一小段,才知道金鑰/聲音 ID/型號對不對(沒開就跳過)
-      {
-        const t = ttsCfg(env);
-        if (!t.enabled) out.probes.tts = { skipped: t.reason };
-        else try {
-          const q = t.P.build(t, 'test');
-          const r = await fetch(q.url, { method: 'POST', headers: q.headers, body: q.body });
-          const ct = r.headers.get('content-type') || '';
-          out.probes.tts = r.ok
-            ? { status: r.status, content_type: ct, bytes: (await r.arrayBuffer()).byteLength }
-            : { status: r.status, body: (await r.text()).slice(0, 200) };
-        } catch (e) { out.probes.tts = { error: String(e) }; }
-      }
       return new Response(JSON.stringify(out, null, 2), {
         headers: { ...cors, 'content-type': 'application/json; charset=utf-8' },
       });

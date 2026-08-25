@@ -215,16 +215,13 @@ https://gazer.star-gzr.com/?dt=2026-08-16T21:30&lat=25.03&lon=121.56
 | `cloudflare-ai-proxy/` | 舊版獨立代理 Worker，保留為備援 / legacy standalone proxy |
 
 部署：把根目錄丟給任何靜態主機即可；語音助理需要 Cloudflare Worker 代理。
-語音辨識用 Groq Whisper（`GROQ_API_KEY`）；對話模型三選一 —— Groq（沿用同一把 `GROQ_API_KEY`）、
-Google Gemini（`GEMINI_API_KEY`）、DeepSeek（`DEEPSEEK_API_KEY`）。沒指定時依 groq → gemini → deepseek
-挑第一個有金鑰的，也可用 `LLM_PROVIDER` 明講，型號用 `GROQ_LLM_MODEL` / `GEMINI_MODEL` / `DEEPSEEK_MODEL` 覆寫。
+語音辨識用 Groq Whisper（`GROQ_API_KEY`）；對話模型三選一 —— GitHub Models（`GH_MODELS_TOKEN`）、
+Google Gemini（`GEMINI_API_KEY`）、DeepSeek（`DEEPSEEK_API_KEY`）。沒指定時依 github → gemini → deepseek
+挑第一個有金鑰的，也可用 `LLM_PROVIDER` 明講，型號用 `GH_MODEL` / `GEMINI_MODEL` / `DEEPSEEK_MODEL` 覆寫。
 三家都走 OpenAI 相容格式，前端不用改；要再加一家只要在 `worker.js` 的 `LLM_PROVIDERS` 表多一列。
-**一家掛了會自動換下一家**：402（沒餘額）／429（限流）／5xx 都算「可換」，換過的會先冷卻一段時間，
-回應的 `x-llm-provider` 與 `x-llm-tried` 標頭看得出實際用了誰、每家各回什麼。
-（GitHub Models 已於 2026-07-30 全面退役，整家移除。）
-所有金鑰一律存成 Secret，切勿寫進 `wrangler.toml` 或 commit 進版控。前端沒有自帶金鑰的退路：
-代理失敗或聽不懂就只會請你再講一次。`/api/diag` 會告訴你目前選到哪家、`llm_chain` 有幾家備援、
-金鑰有沒有設、上游回什麼狀態碼。
+所有金鑰一律存成 Secret，切勿寫進 `wrangler.toml` 或 commit 進版控。
+本機使用直接開 `index.html`；沒有代理時語音會改問你要不要自帶 API key。
+`/api/diag` 會告訴你目前選到哪家、金鑰有沒有設、上游回什麼狀態碼。
 
 ### 唸出通知（TTS）/ Spoken notifications
 
