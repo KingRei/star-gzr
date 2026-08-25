@@ -2540,7 +2540,7 @@ let notifyOn=true;
    收掉的那一窗用 display:none,留下的自動撐滿;resize() 會跳過寬高為 0 的窗,
    所以還原時要再叫一次才會重設 aspect(不然畫面會被拉扁)。 */
 const paneModeBtn=document.getElementById('paneModeBtn');
-const PANE_STR=[['雙窗','Two panes'],['只有日心','Solar only'],['只有地平','Sky only']];
+const PANE_STR=[['雙窗','Dual panes'],['只有日心','Solar only'],['只有地平','Sky only']];
 let paneMode=0;
 function applyPaneMode(){
   paneL.classList.toggle('off',paneMode===2);
@@ -2626,14 +2626,17 @@ const AI_PROXY_BASE='/api';
 const proxyLast={asr:null,llm:null};
 async function proxyFail(tag,r){
   let d=''; try{ d=(await r.clone().text()).slice(0,200); }catch(_){}
-  console.warn('[AI proxy] '+tag+' '+r.status+' '+r.url+' :: '+d);
+  console.warn('[AI proxy] '+tag+' '+r.status+' '+r.url+' :: '+d,r.headers.get('x-llm-tried')||'');
   proxyLast[tag.toLowerCase()]={status:r.status,detail:d};
-  toast('! '+tag+' proxy '+r.status,false,true);
+  /* 429 = 上游限流/免費額度用完,不是設定壞掉,講人話就好 */
+  toast(r.status===429?T('AI 忙線中,等幾秒再說一次','AI is rate-limited — wait a few seconds')
+                      :'! '+tag+' proxy '+r.status,false,true);
 }
 /* 代理確實回過話(不是 404 沒這個端點)就報錯不 prompt;回 true 代表已處理完畢 */
 function proxyBlocked(kind){
   const p=proxyLast[kind];
   if(!p||p.status===404)return false;
+  if(p.status===429)return true; /* proxyFail 已經講過「忙線中」,不必再吐一次細節 */
   let why='';
   try{ const j=JSON.parse(p.detail); why=(j.error&&(j.error.message||j.error))||j.message||''; }catch(_){ why=p.detail; }
   why=String(why||'').slice(0,90);
@@ -2730,8 +2733,15 @@ async function handleVoice(blob){
     messages:[{role:'system',content:AI_SYS},{role:'user',content:text}]};
   let raw;
   try{
-    const r=await fetch(proxyUrl('llm'),
+    /* 429(限流/免費額度)自動重試一次:Worker 端已經會換供應商,
+       這裡再等一下下,對付「每分鐘幾次」那種短期額度。 */
+    let r=await fetch(proxyUrl('llm'),
       {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(r.status===429){
+      await new Promise(res=>setTimeout(res,2500));
+      r=await fetch(proxyUrl('llm'),
+        {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    }
     if(!r.ok){ proxyFail('LLM',r); throw 0; }
     raw=await r.json();
   }catch(e){

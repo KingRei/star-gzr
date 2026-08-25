@@ -133,13 +133,10 @@ function ttsCfg(env) {
  * 注意:gemini / deepseek 走各自的原生相容端點,不吃 AI Gateway 的 azure-openai 路徑;
  * 想經 Gateway 請自行把 GEMINI_BASE / DEEPSEEK_BASE 設成完整前綴。
  */
-function llmCfg(env, B) {
-  const asked = String(env.LLM_PROVIDER || '').toLowerCase();
-  const pick = LLM_PROVIDERS[asked] ? asked
-    : (LLM_ORDER.find(n => env[LLM_PROVIDERS[n].keyName]) || 'github');
-  const P = LLM_PROVIDERS[pick];
+function llmCfgOf(name, env, B) {
+  const P = LLM_PROVIDERS[name];
   return {
-    name: pick,
+    name,
     base: env[P.baseVar] || (P.gateway ? B.llm : P.defBase),
     model: env[P.modelVar] || P.defModel,
     key: env[P.keyName],
@@ -148,6 +145,28 @@ function llmCfg(env, B) {
     strip: P.strip || [],
   };
 }
+function llmCfg(env, B) {
+  const asked = String(env.LLM_PROVIDER || '').toLowerCase();
+  const pick = LLM_PROVIDERS[asked] ? asked
+    : (LLM_ORDER.find(n => env[LLM_PROVIDERS[n].keyName]) || 'github');
+  return llmCfgOf(pick, env, B);
+}
+
+/**
+ * 這次可以用的供應商清單:LLM_PROVIDER 指定的排第一,其餘照 LLM_ORDER 補在後面,
+ * 只留下真的有金鑰(或走 Gateway 認證)的。用途是「額度用完就換下一家」——
+ * 免費層的 429(rate limit / quota)最常見,單靠一家會整個語音功能停擺。
+ */
+function llmChain(env, B) {
+  const asked = String(env.LLM_PROVIDER || '').toLowerCase();
+  const order = [];
+  if (LLM_PROVIDERS[asked]) order.push(asked);
+  for (const n of LLM_ORDER) if (!order.includes(n)) order.push(n);
+  return order.map(n => llmCfgOf(n, env, B))
+    .filter(c => c.key || (B.via === 'gateway' && c.useGwHeaders));
+}
+/* 這些狀態碼代表「這家現在不行,但換一家可能可以」 */
+const LLM_RETRY = new Set([402, 408, 409, 425, 429, 500, 502, 503, 504]);
 
 const CORS = (origin, allowed) => ({
   'Access-Control-Allow-Origin': allowed.includes(origin) ? origin : allowed[0],
@@ -186,6 +205,7 @@ export default {
         llm_provider: L.name,
         llm_base: L.base,
         llm_model: L.model,
+        llm_chain: llmChain(env, B).map(c => `${c.name}:${c.model}`),   // 額度用完會照這個順序換家
         vars: {
           CF_ACCOUNT_ID: has('CF_ACCOUNT_ID'),
           CF_GATEWAY_ID: has('CF_GATEWAY_ID'),
@@ -268,28 +288,51 @@ export default {
 
       // ── 對話模型：GitHub Models（OpenAI 相容）──
       if (url.pathname === '/api/llm') {
-        const L = llmCfg(env, B);
-        if (!L.key && !(B.via === 'gateway' && L.useGwHeaders)) {
+        const chain = llmChain(env, B);
+        if (!chain.length) {
+          const L = llmCfg(env, B);
           return new Response(JSON.stringify({ error: `${L.keyName} not set on Worker` }), { status: 500, headers: cors });
         }
-        // 前端送 gpt-4o-mini；這裡統一改寫成該端點認得的名稱
-        let payload = {};
-        try { payload = JSON.parse(await req.text()); } catch (_) {}
-        payload.model = L.model;
-        // 某些相容層不吃 OpenAI 專屬欄位,依供應商設定先拿掉以免 400
-        for (const k of L.strip) delete payload[k];
+        let body = {};
+        try { body = JSON.parse(await req.text()); } catch (_) {}
 
-        const r = await fetch(`${L.base}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json', ...(L.useGwHeaders ? aig : {}),
-            ...(L.key ? { Authorization: `Bearer ${L.key}` } : {}),
-          },
-          body: JSON.stringify(payload),
-        });
-        return new Response(await r.text(), {
-          status: r.status,
-          headers: { ...cors, 'content-type': 'application/json' },
+        const tried = [];
+        let last = null;
+        for (const L of chain) {
+          // 前端送 gpt-4o-mini；這裡統一改寫成該端點認得的名稱
+          const payload = { ...body, model: L.model };
+          // 某些相容層不吃 OpenAI 專屬欄位,依供應商設定先拿掉以免 400
+          for (const k of L.strip) delete payload[k];
+
+          let r;
+          try {
+            r = await fetch(`${L.base}/chat/completions`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json', ...(L.useGwHeaders ? aig : {}),
+                ...(L.key ? { Authorization: `Bearer ${L.key}` } : {}),
+              },
+              body: JSON.stringify(payload),
+            });
+          } catch (e) {
+            tried.push(`${L.name}:fetch-failed`);
+            last = { status: 502, text: JSON.stringify({ error: String(e).slice(0, 200) }) };
+            continue;
+          }
+          const text = await r.text();
+          tried.push(`${L.name}:${r.status}`);
+          if (r.ok) {
+            return new Response(text, {
+              status: 200,
+              headers: { ...cors, 'content-type': 'application/json', 'x-llm-provider': L.name },
+            });
+          }
+          last = { status: r.status, text };
+          if (!LLM_RETRY.has(r.status)) break;   // 金鑰錯/請求壞掉,換家也沒用
+        }
+        return new Response(last.text, {
+          status: last.status,
+          headers: { ...cors, 'content-type': 'application/json', 'x-llm-tried': tried.join(',') },
         });
       }
 
