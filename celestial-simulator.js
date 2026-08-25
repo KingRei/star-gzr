@@ -944,10 +944,11 @@ const EXTRA_CONST={
 const extraGroupR=new THREE.Group(); extraGroupR.visible=false; starFrameR.add(extraGroupR);
 const ECL_POLE_EQ=new THREE.Vector3(0,-Math.sin(OBLQ),Math.cos(OBLQ));
 let starsR, eclLineR, eqLineR, signSkyGroup, showEclLines=false; /* 參考線預設關閉 */
-/* 日月行星的視大小:預設是「示意」尺寸(太陽約 3.3°、行星約 1.4°,遠大於真實),
-   勾了這個才用真實角徑 2·atan(R/d)。真實尺寸下行星只有 0.01° 上下,
-   所以保留一個約 1.2 像素的下限,否則會完全看不見(真實夜空裡它們也是靠亮度而非大小被看見)。 */
-let trueSize=false;
+/* 行星的視大小:預設用真實角徑 2·atan(R/d)(取消勾選才回到示意的固定圓點)。
+   真實尺寸下遠行星只有 0.01° 上下,所以保留約 1.2 像素的下限,否則會完全看不見
+   (真實夜空裡它們也是靠亮度而非大小被看見)。太陽與月亮不受影響——
+   它們一律維持示意大小,免得縮成小點看不出日面與月相。 */
+let trueSize=true;
 {
   const eqp=[]; for(let k=0;k<=128;k++){const a=k/128*2*Math.PI;eqp.push(eqUnit(a,0).multiplyScalar(DOME*0.97));}
   eqLineR=new THREE.Line(new THREE.BufferGeometry().setFromPoints(eqp),
@@ -1068,20 +1069,8 @@ function drawPhase(elDeg){
 const moonSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:drawPhase(90),transparent:true,depthWrite:false}));
 moonSprite.scale.set(4.6,4.6,1);
 moonSprite.renderOrder=5; /* 日食時月盤蓋在日盤之上(月球較近,物理正確) */
-/* 地平視角月食:地球本影盤,置於反日點——食分與方向由真實幾何自然呈現 */
-const umbraSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:(()=>{
-  const N=64,d=new Uint8Array(N*N*4);
-  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
-    const dx=(x+0.5)/N*2-1,dy=(y+0.5)/N*2-1,r=Math.min(1,Math.hypot(dx,dy));
-    const a=r<0.85?1:Math.max(0,(1-r)/0.15); /* 硬核心+軟邊(半影) */
-    const i2=(y*N+x)*4;
-    d[i2]=58;d[i2+1]=12;d[i2+2]=8;d[i2+3]=Math.round(205*a);
-  }
-  const t=new THREE.DataTexture(d,N,N,THREE.RGBAFormat);
-  t.minFilter=THREE.LinearFilter;t.magFilter=THREE.LinearFilter;t.needsUpdate=true;return t;
-})(),transparent:true,depthWrite:false,depthTest:false}));
-umbraSprite.visible=false; umbraSprite.renderOrder=6;
-skyGroup.add(umbraSprite);
+/* 月食用色:白 → 銅紅(食分越深越紅越暗) */
+const LUN_C0=new THREE.Color(0xffffff), LUN_C1=new THREE.Color(0xB33A20);
 moonBody.grp.add(moonSprite);
 moonBody.mat=moonSprite.material; /* 沿用地平線下調暗邏輯 */
 let phaseBucket=-1;
@@ -1510,7 +1499,7 @@ document.getElementById('yNext').addEventListener('click',()=>{tableYear++;rende
    ══════════════════════════════════════════════════════════ */
 const UI_STR={
   uiTime:['時刻','Time'], uiSpeed:['速度','Speed'], uiLat:['緯度','Lat'], uiLon:['經度','Lon'],
-  nowBtn:['切到現在','Jump now'],
+  nowBtn:['切現在','Jump now'],
   resetViewBtn:['回初始位','Initial view'],
   retroTableBtn:['時刻表','Almanac'],
   tabRetro:['行星逆行','Retrogrades'],
@@ -1542,7 +1531,7 @@ const UI_STR={
   uiDay:['日夜背景變化','Day–night background'],
   uiText:['文字標籤','Text labels'],
   uiEclLine:['黃道/白道/天球赤道線','Ecliptic / lunar / equator lines'],
-  uiTrueSize:['日月行星真實視大小','True apparent sizes'],
+  uiTrueSize:['行星真實視大小','True planet sizes'],
   uiPhase:['月相與影錐','Moon phase & shadows'],
   uiScale:['正確比例(距離線性)','True scale (linear distances)'],
   uiFootTime:['模擬時刻','Sim time'], uiFootLoc:['觀測地','Observer'],
@@ -2149,18 +2138,15 @@ function animate(now){
     const e=eclToEq(rotEclZ(g,psiR));
     const v=new THREE.Vector3(e.x,e.y,e.z).normalize().multiplyScalar(DOME*0.9);
     b.grp.position.copy(v);
-    if(b.dot){ /* 視大小:依真實角尺寸放大(近距天體變大);下限預設=示意圓點,真實模式下=約 1.2 像素 */
+    if(b.dot){ /* 視大小:行星依真實角尺寸(近距天體變大),日月一律示意大小 */
+      const isLum=(b.key==='sun'||b.key==='moon'); /* 太陽/月亮不套用真實視大小 */
       const Rkm=b.key==='sun'?696000: b.key==='moon'?1737.4: TRUE_KM[b.key];
       const sc=(DOME*0.9)*Math.atan((Rkm/AU_KM)/Math.max(distAU,1e-9))/b.dotR;
-      const k=Math.min(60,Math.max(trueSize?minVisScale(b.dotR):1,sc));
-      b.dot.scale.setScalar(k);
-      /* 光暈:真實模式下太陽維持原大小——眼睛看到的日面炫光本來就遠大於 0.5 度的日盤;
-         月亮縮一半留一點暈,其餘天體才真的跟著盤面縮。日冕貼著日盤,照實縮。 */
-      if(b.glowObj){
-        const gs=!trueSize?1:(b.key==='sun'?1:(b.key==='moon'?Math.max(k,0.35):Math.max(k,0.06)));
-        b.glowObj.scale.setScalar(gs);
-      }
-      if(b.key==='sun')coronaSprite.scale.setScalar(13*(trueSize?Math.max(k,0.06):1));
+      const useTrue=trueSize&&!isLum;
+      const k=Math.min(60,Math.max(useTrue?minVisScale(b.dotR):1,sc));
+      b.dot.scale.setScalar(isLum?Math.min(60,Math.max(1,sc)):k);
+      /* 光暈:日月維持原大小,行星才跟著盤面縮 */
+      if(b.glowObj)b.glowObj.scale.setScalar(useTrue?Math.max(k,0.06):1);
     }
     v.applyMatrix4(skyMat4);
     const below=!hideHorizon && v.y<0;
@@ -2186,22 +2172,19 @@ function animate(now){
       moonSprite.material.needsUpdate=true;
     }
   }
-  /* 月盤大小:示意 4.6(約 2.9°),真實模式下 = 2·90·tan(月角半徑) ≈ 0.8(約 0.52°) */
-  moonSprite.scale.setScalar(trueSize
-    ? Math.max(2*(DOME*0.9)*Math.tan(Math.atan(1737.4/mgR.distKm)), minVisScale(1))
-    : 4.6);
+  moonSprite.scale.setScalar(4.6); /* 月盤一律示意大小(約 2.9°),不隨真實視大小改變 */
   sunDirLight.position.copy(sunWorld); /* 行星光影朝向太陽 */
-  /* 月食呈現(地球觀察地):本影盤在反日點,半徑=本影角半徑/月角半徑 × 月盤 */
+  /* 月食呈現(地球觀察地):不畫本影盤,直接把月球本身依食分染紅變暗 */
   const lunEcl=(eclipseState==='lunarT'||eclipseState==='lunarP');
   if(viewBody==='earth'&&lunEcl){
-    umbraSprite.position.copy(skyBodies[0].grp.position).multiplyScalar(-1);
+    const sd=skyBodies[0].grp.position.clone().normalize();      /* 太陽方向 */
+    const md=moonBody.grp.position.clone().normalize();          /* 月球方向 */
+    const sep=Math.acos(Math.max(-1,Math.min(1,-sd.dot(md))));   /* 離反日點的角距 */
     const rmA=Math.atan(1737.4/mgR.distKm);
-    const parA=Math.asin(6378/mgR.distKm);
-    const uA=1.02*(parA-0.00465+0.0000426);
-    umbraSprite.scale.setScalar(moonSprite.scale.x*uA/rmA);
-    umbraSprite.visible=true;
-  }else umbraSprite.visible=false;
-  moonSprite.material.color.setHex(eclipseState==='lunarT'?0xC96A50: eclipseState==='lunarP'?0xE0CFC8 :0xffffff);
+    const uA=1.02*(Math.asin(6378/mgR.distKm)-0.00465+0.0000426);
+    const f=Math.max(0,Math.min(1,(uA+rmA-sep)/(2*rmA)));        /* 進入本影的比例 */
+    moonSprite.material.color.copy(LUN_C0).lerp(LUN_C1,f).multiplyScalar(1-0.45*f);
+  }else moonSprite.material.color.setHex(0xffffff);
   /* 月球觀察地:月食=地球遮日,地球呈背光暗面+大氣折射紅環 */
   if(window._earthRim){
     window._earthRim.visible=(viewBody==='moon'&&lunEcl);
@@ -2557,7 +2540,7 @@ let notifyOn=true;
    收掉的那一窗用 display:none,留下的自動撐滿;resize() 會跳過寬高為 0 的窗,
    所以還原時要再叫一次才會重設 aspect(不然畫面會被拉扁)。 */
 const paneModeBtn=document.getElementById('paneModeBtn');
-const PANE_STR=[['雙窗','Dual'],['只有日心','Solar only'],['只有地平','Sky only']];
+const PANE_STR=[['雙窗','Two panes'],['只有日心','Solar only'],['只有地平','Sky only']];
 let paneMode=0;
 function applyPaneMode(){
   paneL.classList.toggle('off',paneMode===2);
@@ -2621,18 +2604,9 @@ notifyBtn.addEventListener('click',()=>{
   notifyBtn.classList.toggle('muted',!notifyOn);
 });
 
-/* ── AI 語音指令:Groq Whisper ASR → GitHub Models LLM → 控制面板 API ──
-   金鑰以 XOR+Base64 混淆存於原始碼常數(防瀏覽原始碼直讀)。
-   產生密文:開發者主控台執行 encodeKey('你的金鑰'),把輸出貼進下方兩個常數。
-   常數留空時,首次使用會詢問並以同樣混淆格式存入 localStorage(僅本機)。
-   誠實聲明:純前端金鑰對有心人仍可還原,正式公開部署請改走代理伺服器。 */
-const _XK='TianXiangYi-Ray-2026';
-function _xor(str){let o='';for(let i=0;i<str.length;i++)o+=String.fromCharCode(str.charCodeAt(i)^_XK.charCodeAt(i%_XK.length));return o;}
-window.encodeKey=k=>btoa(_xor(k));
-function decodeKey(b){ try{ return b? _xor(atob(b)) : ''; }catch(e){ return ''; } }
-/* AI 代理端點:填入 Cloudflare Worker 網址
-   (如 'https://stargzr-ai.你的帳號.workers.dev'),經 Cloudflare AI Gateway
-   集中管理金鑰、速率限制與用量分析。留空則直接使用本機金鑰模式。 */
+/* ── AI 語音指令:Groq Whisper ASR → LLM → 控制面板 API ──
+   金鑰一律放在 Cloudflare Worker 的 Secret,前端只打同網域的 /api/*。
+   已移除本機金鑰(prompt + localStorage)退路:代理失敗或聽不懂就請使用者再講一次。 */
 /* 真實視大小時的最低可見度:換算成大約 1.2 個像素,避免行星整顆消失 */
 function minVisScale(dotR){
   const h=rendR.domElement.clientHeight||600;
@@ -2641,15 +2615,14 @@ function minVisScale(dotR){
 }
 document.getElementById('trueSizeChk').addEventListener('change',e=>{
   trueSize=e.target.checked;
-  toast(trueSize?T('真實視大小:日月各約 0.5 度(整片天空的 1/180),縮小視野倍率才看得出圓盤',
-                   'True sizes: Sun and Moon are ~0.5° each — narrow the field of view to see the discs')
-               :T('日月行星改回示意大小','Schematic sizes restored'));
+  toast(trueSize?T('行星改用真實視大小(日月不變)','True planet sizes (Sun and Moon unchanged)')
+               :T('行星改回示意大小','Schematic planet sizes'));
 });
 
 const AI_PROXY_BASE='/api';
 /* 代理失敗時把原因顯示出來,免得只看到「要 API Key」卻不知道哪裡壞掉。
-   proxyLast 記下最後一次的狀態碼與上游訊息:代理「有回應但出錯」時就不該再去問
-   使用者要 GitHub Token(那是沒有代理時才有意義的退路),直接把真正的錯誤講出來。 */
+   proxyLast 記下最後一次的狀態碼與上游訊息:代理「有回應但出錯」時直接把真正的錯誤講出來,
+   其餘情況(沒回應、聽不懂、解析失敗)一律只請使用者再講一次。 */
 const proxyLast={asr:null,llm:null};
 async function proxyFail(tag,r){
   let d=''; try{ d=(await r.clone().text()).slice(0,200); }catch(_){}
@@ -2671,16 +2644,6 @@ function proxyBlocked(kind){
 function proxyUrl(kind){
   if(!AI_PROXY_BASE)throw new Error('no proxy');
   return AI_PROXY_BASE.replace(/\/$/,'')+'/'+kind;
-}
-const GROQ_KEY_ENC='';  /* ← encodeKey('gsk_...') 輸出 */
-const GH_TOKEN_ENC='';  /* ← encodeKey('github_pat_...') 輸出 */
-function getKey(enc,lsKey,msg){
-  if(enc)return decodeKey(enc);
-  const ls=localStorage.getItem(lsKey);
-  if(ls)return decodeKey(ls);
-  const k=prompt(msg)||'';
-  if(k)localStorage.setItem(lsKey,window.encodeKey(k));
-  return k;
 }
 const AI_IDS=['dt','speed','lat','lon','langSel','tidalChk','phaseChk','sphereChk','signChk','orbitChk',
  'scaleChk','obsSel','retroSel','trailChk','trackSel','lockSel','eclLineChk','trueSizeChk','bgStarChk',
@@ -2745,10 +2708,10 @@ micBtn.addEventListener('click',async()=>{
     toast(T('● 錄音中,講完停頓約3秒會自動送出','● Recording — pause ~3s to send'),false,true);
   }catch(e){ toast(T('! 無法取得麥克風','! Microphone unavailable'),false,true); }
 });
+/* 聽不懂/代理失敗一律只請使用者再講一次,不再跳出輸入金鑰的 prompt */
+function sayAgain(){ toast(T('沒聽懂,請重新講一次','Didn\'t catch that — please say it again'),false,true); }
 async function handleVoice(blob){
-  /* 代理優先:先打同網域 Netlify Functions(金鑰存於伺服器環境變數,
-     使用者零設定);代理不存在或失效(404/500,例如你從後台移除金鑰)
-     時,退回本機金鑰模式(prompt 一次、混淆存 localStorage)。 */
+  /* 金鑰一律放伺服器(Worker Secret),前端不再有本機金鑰模式 */
   let text='';
   proxyLast.asr=null; proxyLast.llm=null;
   try{
@@ -2758,17 +2721,9 @@ async function handleVoice(blob){
     text=((await r.json()).text||'').trim();
   }catch(e){
     if(proxyBlocked('asr'))return;
-    const gk=getKey(GROQ_KEY_ENC,'tq_groq',T('輸入 Groq API Key(混淆後僅存本機)','Groq API key (obfuscated, stored locally)'));
-    if(!gk){ toast(T('! ASR 代理與本機金鑰皆未設定','! No ASR proxy or local key'),false,true); return; }
-    const fd=new FormData();
-    fd.append('file',blob,'voice.webm');
-    fd.append('model','whisper-large-v3');
-    const tr=await fetch('https://api.groq.com/openai/v1/audio/transcriptions',
-      {method:'POST',headers:{Authorization:'Bearer '+gk},body:fd});
-    if(!tr.ok)throw new Error('ASR '+tr.status);
-    text=((await tr.json()).text||'').trim();
+    sayAgain(); return;
   }
-  if(!text){ toast(T('! 未聽到內容','! Heard nothing'),false,true); return; }
+  if(!text){ sayAgain(); return; }
   toast('“'+text.slice(0,40)+'”',false,true);
   const payload={model:'gpt-4o-mini',temperature:0.2,
     response_format:{type:'json_object'},
@@ -2781,19 +2736,11 @@ async function handleVoice(blob){
     raw=await r.json();
   }catch(e){
     if(proxyBlocked('llm'))return;
-    const hk=getKey(GH_TOKEN_ENC,'tq_gh',T('輸入 GitHub Models Token(混淆後僅存本機)','GitHub Models token (obfuscated, stored locally)'));
-    if(!hk){ toast(T('! LLM 代理與本機金鑰皆未設定','! No LLM proxy or local key'),false,true); return; }
-    /* 舊的 models.inference.ai.azure.com 已退場;這個端點的型號要帶 vendor 前綴 */
-    const lr=await fetch('https://models.github.ai/inference/chat/completions',{
-      method:'POST',
-      headers:{'Content-Type':'application/json',Authorization:'Bearer '+hk},
-      body:JSON.stringify({...payload,model:'openai/gpt-4o-mini'})});
-    if(!lr.ok)throw new Error('LLM '+lr.status);
-    raw=await lr.json();
+    sayAgain(); return;
   }
   let out;
   try{ out=JSON.parse(raw.choices[0].message.content); }
-  catch(e){ throw new Error(T('回覆解析失敗','Bad AI response')); }
+  catch(e){ sayAgain(); return; }
   const n=runActions(out.actions);
   toast(String(out.reply||'').slice(0,30)+(n?' ('+n+')':''),false,true);
 }
