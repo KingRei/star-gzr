@@ -1424,6 +1424,12 @@ let tableYear=new Date().getFullYear();
 let tableTab='retro';                      /* retro | ecl */
 function fmtDateTime(ms){const d=new Date(ms);
   return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;}
+/* 表格裡的每個時刻都做成可點的按鈕:點下去把模擬時間跳過去(見 rowsEl 的委派處理) */
+function tCell(ms,txt){
+  return Number.isFinite(ms)
+    ? `<td><button type="button" class="tjump" data-ms="${Math.round(ms)}" title="${T('跳到這個時刻','Jump to this moment')}">${txt}</button></td>`
+    : `<td>${txt}</td>`;
+}
 const ECL_TYPE={
   lunarT:['月全食','Total lunar'], lunarP:['月偏食','Partial lunar'],
   solarT:['日全食','Total solar'], solarA:['日環食','Annular solar'], solarP:['日偏食','Partial solar']
@@ -1457,8 +1463,9 @@ function renderEclTable(){
   for(const e of evs){
     const ty=ECL_TYPE[e.type]||ECL_TYPE.solarP;
     rowsEl.insertAdjacentHTML('beforeend',
-      `<tr><td class="pname">${ty[lang==='zh'?0:1]}</td><td>${fmtDateTime(e.start)}</td>`+
-      `<td>${fmtDateTime(e.peak)}</td><td>${fmtDateTime(e.end)}</td></tr>`);
+      `<tr><td class="pname">${ty[lang==='zh'?0:1]}</td>`+
+      tCell(e.start,fmtDateTime(e.start))+tCell(e.peak,fmtDateTime(e.peak))+tCell(e.end,fmtDateTime(e.end))+
+      `</tr>`);
   }
 }
 function renderRetroTable(){
@@ -1478,7 +1485,9 @@ function renderRetroTable(){
       const eTxt=v.e.open? T(`持續至 ${tableYear+1} 年`,`into ${tableYear+1}`) : fmtDate(v.e.ms);
       const dur=Math.round((v.e.ms-v.s.ms)/86400000);
       rowsEl.insertAdjacentHTML('beforeend',
-        `<tr><td class="pname">${k===0?name:''}</td><td>${sTxt}</td><td>${eTxt}</td><td><span class="dur">${dur} ${T('天','days')}</span></td></tr>`);
+        `<tr><td class="pname">${k===0?name:''}</td>`+
+        tCell(v.s.ms,sTxt)+tCell(v.e.ms,eTxt)+
+        `<td><span class="dur">${dur} ${T('天','days')}</span></td></tr>`);
     });
   }
 }
@@ -1489,6 +1498,15 @@ document.getElementById('retroTableBtn').addEventListener('click',()=>{
 });
 document.getElementById('tabRetro').addEventListener('click',()=>{tableTab='retro';renderTable();});
 document.getElementById('tabEcl').addEventListener('click',()=>{tableTab='ecl';renderTable();});
+/* 點表格裡的時刻 → 跳過去、暫停(免得那一瞬間馬上跑掉)、關掉表格 */
+rowsEl.addEventListener('click',e=>{
+  const b=e.target.closest('.tjump'); if(!b)return;
+  const ms=Number(b.dataset.ms); if(!Number.isFinite(ms))return;
+  simMs=ms; setDtInput(simMs);
+  if(playing){ playing=false; setPlayLabel(); }
+  modalBg.classList.remove('open');
+  toast(T('跳到 ','Jumped to ')+fmtDateTime(ms)+T('(已暫停)',' (paused)'),false,true);
+});
 document.getElementById('mClose').addEventListener('click',()=>modalBg.classList.remove('open'));
 modalBg.addEventListener('click',e=>{if(e.target===modalBg)modalBg.classList.remove('open');});
 document.getElementById('yPrev').addEventListener('click',()=>{tableYear--;renderTable();});

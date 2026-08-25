@@ -246,6 +246,15 @@
   td{padding:7px 6px;border-bottom:1px solid rgba(42,53,87,.5);font-family:ui-monospace,Menlo,monospace;}
   td.pname{font-family:inherit;font-weight:600;}
   td .dur{color:var(--dim);}
+  /* 表格裡的時刻:看起來像可點的連結,點了就把模擬時間跳過去 */
+  td .tjump{
+    background:none;border:0;padding:2px 4px;margin:-2px -4px;border-radius:5px;
+    font:inherit;color:var(--paper);cursor:pointer;
+    text-decoration:underline;text-decoration-style:dotted;
+    text-underline-offset:3px;text-decoration-color:rgba(227,179,76,.55);
+  }
+  td .tjump:hover,td .tjump:focus-visible{color:var(--brass);background:rgba(227,179,76,.12);outline:none;}
+  td .tjump:active{transform:translateY(1px);}
   tr.none td{color:var(--dim);font-family:inherit;}
   @media (max-width:860px) and (orientation:portrait){
     main{flex-direction:column;}
