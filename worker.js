@@ -167,6 +167,12 @@ function llmChain(env, B) {
 }
 /* 這些狀態碼代表「這家現在不行,但換一家可能可以」 */
 const LLM_RETRY = new Set([402, 408, 409, 425, 429, 500, 502, 503, 504]);
+/* 剛失敗過的供應商先冷卻,免得每次都要先撞一次牆才換家。
+   402(沒餘額)冷卻久一點——儲值前再打幾次都一樣。存在 isolate 記憶體,
+   Worker 重啟就清空,所以只是省時間,不會把設定卡死。 */
+const llmCool = new Map();
+const coolFor = st => (st === 402 ? 600000 : st === 429 ? 60000 : 30000);
+const isCool = n => (llmCool.get(n) || 0) > Date.now();
 
 const CORS = (origin, allowed) => ({
   'Access-Control-Allow-Origin': allowed.includes(origin) ? origin : allowed[0],
@@ -296,9 +302,13 @@ export default {
         let body = {};
         try { body = JSON.parse(await req.text()); } catch (_) {}
 
+        // 冷卻中的先跳過;若全在冷卻就照原順序硬打(總比直接放棄好)
+        const hot = chain.filter(c => !isCool(c.name));
+        const queue = hot.length ? hot : chain;
+
         const tried = [];
-        let last = null;
-        for (const L of chain) {
+        let last = null, first = null;
+        for (const L of queue) {
           // 前端送 gpt-4o-mini；這裡統一改寫成該端點認得的名稱
           const payload = { ...body, model: L.model };
           // 某些相容層不吃 OpenAI 專屬欄位,依供應商設定先拿掉以免 400
@@ -317,21 +327,32 @@ export default {
           } catch (e) {
             tried.push(`${L.name}:fetch-failed`);
             last = { status: 502, text: JSON.stringify({ error: String(e).slice(0, 200) }) };
+            first = first || last;
+            llmCool.set(L.name, Date.now() + coolFor(502));
             continue;
           }
           const text = await r.text();
           tried.push(`${L.name}:${r.status}`);
           if (r.ok) {
+            llmCool.delete(L.name);
             return new Response(text, {
               status: 200,
               headers: { ...cors, 'content-type': 'application/json', 'x-llm-provider': L.name },
             });
           }
-          last = { status: r.status, text };
+          last = { status: r.status, text, name: L.name };
+          first = first || last;
           if (!LLM_RETRY.has(r.status)) break;   // 金鑰錯/請求壞掉,換家也沒用
+          llmCool.set(L.name, Date.now() + coolFor(r.status));
         }
-        return new Response(last.text, {
-          status: last.status,
+        /* 全軍覆沒:回報「你指定的那家」的狀態碼(前端據此顯示忙線/額度用完),
+           tried 一起塞進 body 與標頭,一眼看得出每家各回什麼。 */
+        const why = first || last;
+        let detail = why.text;
+        try { detail = JSON.stringify({ ...JSON.parse(why.text), tried }); }
+        catch (_) { detail = JSON.stringify({ error: String(why.text).slice(0, 300), tried }); }
+        return new Response(detail, {
+          status: why.status,
           headers: { ...cors, 'content-type': 'application/json', 'x-llm-tried': tried.join(',') },
         });
       }

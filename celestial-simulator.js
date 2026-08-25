@@ -2646,15 +2646,16 @@ async function proxyFail(tag,r){
   let d=''; try{ d=(await r.clone().text()).slice(0,200); }catch(_){}
   console.warn('[AI proxy] '+tag+' '+r.status+' '+r.url+' :: '+d,r.headers.get('x-llm-tried')||'');
   proxyLast[tag.toLowerCase()]={status:r.status,detail:d};
-  /* 429 = 上游限流/免費額度用完,不是設定壞掉,講人話就好 */
+  /* 429=限流、402=餘額用完,都不是設定壞掉,講人話就好 */
   toast(r.status===429?T('AI 忙線中,等幾秒再說一次','AI is rate-limited — wait a few seconds')
+       :r.status===402?T('AI 額度用完了(要儲值或換供應商)','AI quota exhausted — top up or switch provider')
                       :'! '+tag+' proxy '+r.status,false,true);
 }
 /* 代理確實回過話(不是 404 沒這個端點)就報錯不 prompt;回 true 代表已處理完畢 */
 function proxyBlocked(kind){
   const p=proxyLast[kind];
   if(!p||p.status===404)return false;
-  if(p.status===429)return true; /* proxyFail 已經講過「忙線中」,不必再吐一次細節 */
+  if(p.status===429||p.status===402)return true; /* proxyFail 已經講過原因,不必再吐一次細節 */
   let why='';
   try{ const j=JSON.parse(p.detail); why=(j.error&&(j.error.message||j.error))||j.message||''; }catch(_){ why=p.detail; }
   why=String(why||'').slice(0,90);
