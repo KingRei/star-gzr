@@ -204,7 +204,7 @@
   #toasts{
     position:fixed;top:auto;bottom:44px;left:auto;right:14px;transform:none;z-index:60;
     display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none;
-    max-width:min(360px,80vw);
+    max-width:min(420px,84vw);
   }
   .toast{
     background:rgba(13,18,38,.66);border:1px solid var(--line);border-radius:10px;

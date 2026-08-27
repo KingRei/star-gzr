@@ -2421,6 +2421,72 @@ function navName(key){
   if(key==='moon')return T('月球','Moon');
   const i=+key.slice(1); return T(ELEM[i].name,ELEM[i].en);
 }
+/* 導覽解說詞:一句話講完(中文攝氏、英文華氏) */
+const NAV_INFO={
+ sun:['73% 氫、25% 氦的恆星,表面 5500°C,核心核融合供應整個星系的能量',
+      'A star of 73% hydrogen and 25% helium; surface 9,900°F, its core fusion powers everything here'],
+ moon:['幾乎沒有大氣,白天 127°C、夜裡 -173°C,潮汐鎖定所以永遠同一面朝著地球',
+       'Almost airless; 260°F by day, -280°F at night; tidally locked, so one face always points at Earth'],
+ p0:['沒有大氣,白天 430°C、夜裡 -180°C,一年只有 88 天',
+     'No real atmosphere; 800°F by day, -290°F at night; a year lasts just 88 days'],
+ p1:['二氧化碳大氣加硫酸雲,地表 465°C,比更靠近太陽的水星還熱',
+     'CO2 atmosphere with sulfuric-acid clouds; surface 870°F — hotter than Mercury'],
+ p2:['氮氧大氣,均溫 15°C,目前唯一已知有液態水和生命的行星',
+     'Nitrogen-oxygen air, average 59°F; the only known world with liquid water and life'],
+ p3:['稀薄的二氧化碳大氣,均溫 -63°C,有太陽系最高的奧林帕斯火山',
+     'Thin CO2 air, average -81°F; home to Olympus Mons, the tallest volcano known'],
+ p4:['氫氦組成的氣體巨行星,雲頂 -110°C,大紅斑是刮了幾百年的風暴',
+     'A hydrogen-helium gas giant; cloud tops -166°F; the Great Red Spot is a centuries-old storm'],
+ p5:['主要由氫和氦組成,雲頂 -140°C,光環是無數冰塊繞著它轉',
+     'Mostly hydrogen and helium; cloud tops -220°F; its rings are countless chunks of ice'],
+ p6:['氫氦加甲烷所以呈青色,-195°C,自轉軸幾乎是躺著轉的',
+     'Hydrogen, helium and methane give it a cyan tint; -320°F; it spins on its side'],
+ p7:['甲烷大氣讓它呈深藍色,-200°C,風速可達每小時 2000 公里',
+     'Methane makes it deep blue; -330°F; winds reach 1,200 mph'],
+ p8:['稀薄的氮甲烷薄霧,-229°C,2006 年被改列為矮行星',
+     'A thin nitrogen-methane haze; -380°F; reclassified as a dwarf planet in 2006']
+};
+const CONST_INFO={
+ '牡羊座':['黃道第一宮,春分點曾經落在這裡','The first zodiac sign; the vernal equinox once sat here'],
+ '金牛座':['橘紅的畢宿五是牛眼,肩膀上掛著昴宿星團','Orange Aldebaran is the bull\'s eye; the Pleiades ride its shoulder'],
+ '雙子座':['北河二與北河三並列,是雙胞胎的兩顆頭','Castor and Pollux side by side — the twins\' two heads'],
+ '巨蟹座':['黃道最暗的一宮,中央藏著鬼宿星團','The faintest zodiac sign; the Beehive Cluster sits at its centre'],
+ '獅子座':['軒轅十四在心臟的位置,獅子頭是個反問號','Regulus marks the heart; the head forms a backwards question mark'],
+ '處女座':['角宿一是全天第 15 亮星,後方是室女座星系團','Spica is the 15th-brightest star; the Virgo galaxy cluster lies beyond'],
+ '天秤座':['原本是天蠍的兩隻螯,後來才獨立成一把秤','Once the scorpion\'s claws, later split off as the scales'],
+ '天蠍座':['紅超巨星心宿二是蠍心,尾巴勾進銀河裡','Red supergiant Antares is its heart; the tail curls into the Milky Way'],
+ '射手座':['茶壺的形狀,壺嘴指的方向就是銀河系中心','A teapot shape; its spout points at the galactic centre'],
+ '摩羯座':['暗淡的倒三角,神話裡是半羊半魚','A faint inverted triangle; half goat, half fish in myth'],
+ '水瓶座':['倒水的人,水流的下方是北落師門','The water bearer; the stream flows down toward Fomalhaut'],
+ '雙魚座':['兩條魚由絲帶相連,現在的春分點就在這裡','Two fish joined by a ribbon; today\'s vernal equinox lies here'],
+ oph:['第 13 個黃道星座,太陽每年在這裡停留約 18 天','The 13th zodiac constellation; the Sun spends about 18 days here'],
+ tri:['織女、牛郎、天津四三顆亮星,夏夜最好用的路標','Vega, Altair and Deneb — the summer sky\'s signpost'],
+ cen:['南門二是離太陽最近的恆星系統,只有 4.4 光年','Alpha Centauri, the nearest star system, just 4.4 light-years away'],
+ ori:['腰帶三星最好認,參宿四偏紅、參宿七偏藍','Three belt stars in a row; red Betelgeuse and blue Rigel at the corners'],
+ uma:['北斗七星,杓口兩顆星連線指向北極星','The Big Dipper; its two pointer stars lead straight to Polaris'],
+ cas:['W 形,繞著北極星轉,和北斗遙遙相對','A W shape circling Polaris, opposite the Big Dipper'],
+ cru:['南半球的方向標,長軸延伸就指向南天極','The southern signpost; its long axis points to the south pole'],
+ cyg:['北十字,天津四在尾巴,銀河從身體穿過','The Northern Cross; Deneb at the tail, the Milky Way through its body'],
+ cma:['天狼星是全天最亮的恆星,距離 8.6 光年','Sirius, the brightest star in the sky, 8.6 light-years away'],
+ boo:['風箏形,橘色的大角星是北天最亮的星','A kite shape; orange Arcturus is the brightest star in the north'],
+ aur:['五邊形,五車二是全天第六亮星','A pentagon; Capella is the sixth-brightest star'],
+ lyr:['織女星藍白明亮,一萬多年後會變成北極星','Brilliant blue-white Vega — the pole star of 12,000 years from now'],
+ aql:['牛郎星在天鷹的頸子上,左右各跟著一顆星','Altair marks the eagle\'s neck, flanked by a star on each side'],
+ per:['英仙座流星雨的輻射點,大陵五是著名的食變星','Radiant of the Perseid meteors; Algol is a famous eclipsing binary'],
+ and:['仙女座星系 M31 在這裡,是肉眼可見最遠的天體','Home to M31 — the farthest object visible to the naked eye'],
+ peg:['秋季四邊形,是秋夜最好認的標記','The Great Square — autumn\'s easiest landmark'],
+ umi:['杓柄的末端那顆就是北極星','Polaris sits right at the end of its handle'],
+ dra:['蜿蜒繞過小熊座,右樞是四千年前的北極星','It winds around Ursa Minor; Thuban was the pole star 4,000 years ago'],
+ her:['拱心石四邊形,旁邊有球狀星團 M13','The Keystone asterism, with globular cluster M13 beside it'],
+ crb:['七顆星排成一個小半圓,像頂皇冠','A small semicircle of seven stars — a crown'],
+ cmi:['南河三與天狼、參宿四合成冬季大三角','Procyon completes the Winter Triangle with Sirius and Betelgeuse'],
+ car:['老人星是全天第二亮的恆星','Canopus, the second-brightest star in the sky'],
+ crv:['四顆星排成的小帆,緊鄰處女座','A small sail of four stars, right beside Virgo']
+};
+function navBlurb(key){
+  const e=(typeof key==='string'&&key.startsWith('c:'))?CONST_INFO[key.slice(2)]:NAV_INFO[key];
+  return e?T(e[0],e[1]):'';
+}
 function constDirEcl(nm){
   let u=CONST_CENTROIDS[nm];
   if(!u){ const c=ZODIAC[nm]||EXTRA_CONST[nm]; if(!c)return null;
@@ -2456,12 +2522,14 @@ function navFaceR(key){
     if(d.lengthSq()<1e-9)return null; d.normalize();
     return {yaw:Math.atan2(d.x,-d.z),pitch:Math.asin(Math.max(-1,Math.min(1,d.y))),fov:40};
   }
-  if(viewBody!=='earth')return null;             /* 行星/日月天空導向:目前僅地球 */
+  /* 任何觀察地都能導覽:天體位置本來就是相對觀察者算的。
+     唯一不轉的情況是目標就是腳下這顆星(或當地看不見的天體)—— 那顆在天空中被隱藏,
+     例如站在火星上導覽火星,地平視角保持不動。 */
   let sb;
   if(key==='sun')sb=skyBodies.find(b=>b.key==='sun');
   else if(key==='moon')sb=skyBodies.find(b=>b.key==='moon');
-  else{ const i=+key.slice(1); if(i===EARTH_IDX)return null; sb=skyBodies.find(b=>b.key===i); }
-  if(!sb)return null;
+  else{ const i=+key.slice(1); sb=skyBodies.find(b=>b.key===i); }
+  if(!sb||!sb.grp.visible)return null;
   const wp=new THREE.Vector3(); sb.grp.getWorldPosition(wp);
   wp.sub(camR.position); if(wp.lengthSq()<1e-9)return null; wp.normalize();
   return {yaw:Math.atan2(wp.x,-wp.z),pitch:Math.asin(Math.max(-1,Math.min(1,wp.y))),fov:34};
@@ -2504,8 +2572,9 @@ function navStep(){
   nav.L0={target:ctrlL.target.clone(),r:ctrlL.r,theta:ctrlL.theta,phi:ctrlL.phi};
   nav.R0={yaw:ctrlR.yaw,pitch:ctrlR.pitch,fov:ctrlR.cam.fov};
   nav.phase='move'; nav.t=0;
-  nav.dur=nav.i===0?1.1:1.4; nav.hold=0.8;
-  toast(T('導覽 → ','Tour → ')+navName(nav.key),false,true);
+  nav.dur=nav.i===0?1.1:1.4; nav.hold=2.0;   /* 停留久一點,讓解說詞讀得完 */
+  const bl=navBlurb(nav.key);
+  toast(navName(nav.key)+(bl?T(':',': ')+bl:''),false,true);
 }
 function navEase(x){ x=Math.max(0,Math.min(1,x)); return x<0.5?2*x*x:1-Math.pow(-2*x+2,2)/2; }
 function updateNav(dt){
@@ -2676,7 +2745,7 @@ dt "YYYY-MM-DDTHH:MM"; speed 3600000|7200000|10800000|21600000|86400000|25920000
 Checkbox bool: tidalChk tidal, phaseChk moon-phase&shadows, sphereChk celestial-sphere, signChk zodiac-sectors, orbitChk orbits, scaleChk true-scale, trailChk retro-trail, eclLineChk ref-lines, bgStarChk stars, dayChk day/night, textChk labels, hideHorChk hide-horizon, hideBtnChk hide the sky-pane bottom buttons, invChk invert-drag, trailFxChk motion-trails(only |speed|>=86400000).
 Select: viewBodySel earth|moon|mars|titan = WHERE the observer stands (sky pane is rendered from that world; changed in the LEFT pane); extraLvlSel min|mid|all = how many extra constellations (few / more / all 23, needs extraConstChk true); obsSel none|sun|p0..p8|moon (follow, true-scale only); retroSel 0|1|3|4|5|6|7|8 = Mercury..Pluto; trackSel off|ecl_e|ecl_w|lun_e|lun_w axis-lock; lockSel (locking a c:… constellation ALSO flies the left pane through the Sun to it and lights up its lines) none|sun|moon|c:牡羊座|c:金牛座|c:雙子座|c:巨蟹座|c:獅子座|c:處女座|c:天秤座|c:天蠍座|c:射手座|c:摩羯座|c:水瓶座|c:雙魚座.
 Click: compassBtn toggle compass-aim (phone points at the real sky using its orientation sensor; mobile only, asks permission, cancelled by dragging; EARTH ONLY — if viewBodySel is not earth the app refuses and explains, so switch viewBodySel to earth first when the user asks for the compass), playBtn toggle-play, nowBtn now, resetViewBtn initial-view (reset BOTH panes to opening state: sky faces due east above horizon, heliocentric default framing; clears any follow/lock/tour), homeBtn reset-view, retroTableBtn almanac table (retrograde + eclipse tabs), paneModeBtn cycles the panes both → heliocentric only → sky only (click 1x/2x/3x to reach the one you want; "hide the sky pane"=1 click from both).
-navigate/tour (camera fly — BOTH panes zoom smoothly): {"type":"navigate","target":BODY} single hop, or {"type":"tour","targets":[BODY,...]} multi-stop. BODY=sun|moon|mercury|venus|earth|mars|jupiter|saturn|uranus|neptune|pluto (Chinese names also accepted). Use for: go to / show me / fly to / navigate / 導覽 / tour from X to Y to Z. "outermost planet / 最外圍行星"=pluto, "innermost / 最內圍"=mercury, "nine planets / 九顆行星"=mercury..pluto in order. BODY may also be a CONSTELLATION name (zodiac or listed), e.g. 牡羊座/Aries, 獅子座/Leo, 天蠍座/Scorpius (zh or en) — a constellation stop turns the sky pane AND flies the heliocentric pane out through the Sun so the constellation itself fills the view, with its lines lit.
+navigate/tour (camera fly — BOTH panes zoom smoothly, and each stop announces a one-line fact about the body; works from ANY observer world — the sky pane simply stays put when the target is the world you are standing on): {"type":"navigate","target":BODY} single hop, or {"type":"tour","targets":[BODY,...]} multi-stop. BODY=sun|moon|mercury|venus|earth|mars|jupiter|saturn|uranus|neptune|pluto (Chinese names also accepted). Use for: go to / show me / fly to / navigate / 導覽 / tour from X to Y to Z. "outermost planet / 最外圍行星"=pluto, "innermost / 最內圍"=mercury, "nine planets / 九顆行星"=mercury..pluto in order. BODY may also be a CONSTELLATION name (zodiac or listed), e.g. 牡羊座/Aries, 獅子座/Leo, 天蠍座/Scorpius (zh or en) — a constellation stop turns the sky pane AND flies the heliocentric pane out through the Sun so the constellation itself fills the view, with its lines lit.
 "Where is <constellation>? / X 在哪(裡)?" is a SHOW request: always emit {"type":"navigate","target":X} (optionally also set lockSel to c:X to keep it centred) — never answer with words only.`;
 const AI_SYS='You operate a celestial simulator and answer astronomy questions ONLY. '+
  'Refuse anything unrelated to astronomy or simulator control (no actions, brief polite reply). '+

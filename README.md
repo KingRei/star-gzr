@@ -35,6 +35,15 @@ into a whitelisted action list and applied to both panes.
 - 「鎖定天蠍座」 · *"lock onto Scorpius"*
 - 「打開星座線，帶我看夏季大三角」 · *"show the constellation lines and take me to the Summer Triangle"*
 
+每一站都會跳出一句簡短介紹（行星講大氣組成與溫度，中文用攝氏、英文用華氏；星座講怎麼認、
+有什麼看頭），而且不論觀察地選在地球、月球、火星還是泰坦，地平視角都會跟著轉過去；
+唯一不轉的情況是導覽目標就是你腳下這顆星（例如站在火星上導覽火星），此時只有日心視窗移動。
+
+Every stop announces a one-line fact — atmosphere and temperature for planets (Celsius in
+Chinese, Fahrenheit in English), how to spot it and what to look for in constellations. The
+sky pane now follows along from any observer world (Earth, Moon, Mars, Titan); it only holds
+still when the target is the world you are standing on.
+
 **控制時間與設定 / Time and settings**
 
 - 「跳到 2027 年 3 月 20 日」 · *"jump to 2027-03-20"*
